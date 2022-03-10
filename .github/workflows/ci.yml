@@ -1,0 +1,96 @@
+name: CI
+
+env:
+  JDK_JAVA_OPTIONS: -XX:+PrintCommandLineFlags # JDK_JAVA_OPTIONS is _the_ env. variable to use for modern Java
+  JVM_OPTS: -XX:+PrintCommandLineFlags # for Java 8 only (sadly, it is not modern enough for JDK_JAVA_OPTIONS)
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+on:
+  pull_request:
+  push:
+    branches: ['main']
+  release:
+    types:
+      - published
+
+jobs:
+  lint:
+    runs-on: ubuntu-20.04
+    timeout-minutes: 30
+    steps:
+      - name: Checkout current branch
+        uses: actions/checkout@v2.3.4
+        with:
+          fetch-depth: 0
+      - name: Setup Scala and Java
+        uses: olafurpg/setup-scala@v10
+      - name: Cache scala dependencies
+        uses: coursier/cache-action@v6
+      - name: Lint code
+        run: sbt lint
+
+  test:
+    runs-on: ubuntu-20.04
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        java: ['adopt@1.11']
+        scala: ['2.13.8']
+        platform: ['JVM']
+    steps:
+      - name: Checkout current branch
+        uses: actions/checkout@v2.3.4
+        with:
+          fetch-depth: 0
+      - name: Setup Scala and Java
+        uses: olafurpg/setup-scala@v10
+        with:
+          java-version: ${{ matrix.java }}
+      - name: Cache sbt
+        uses: actions/cache@v2
+        with:
+          path: |
+            ~/.sbt
+            ~/.ivy2/cache
+            ~/.coursier/cache/v1
+            ~/.cache/coursier/v1
+            ~/AppData/Local/Coursier/Cache/v1
+            ~/Library/Caches/Coursier/v1
+          key: ${{ runner.os }}-sbt-cache-v2-${{ hashFiles('**/*.sbt') }}-${{ hashFiles('project/build.properties') }}
+      - name: Build and Test
+        run: sbt ++${{ matrix.scala }}! test
+      - name: Coverage Coveralls
+        env:
+          COVERALLS_REPO_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          COVERALLS_FLAG_NAME: Scala ${{ matrix.scala }}
+        run: sbt ++${{ matrix.scala }} clean coverage test coverageReport coverageAggregate coveralls
+  ci:
+    runs-on: ubuntu-20.04
+    # needs: [lint, mdoc, test]
+    needs: [lint, test] # TODO: skipping docs (mdoc) due to build github actions issue
+    steps:
+      - name: Aggregate of lint, and all tests
+        run: echo "ci passed"
+
+  # publish:
+  #   runs-on: ubuntu-20.04
+  #   timeout-minutes: 30
+  #   needs: [ci]
+  #   if: github.event_name != 'pull_request'
+  #   steps:
+  #     - name: Checkout current branch
+  #       uses: actions/checkout@v2.3.4
+  #       with:
+  #         fetch-depth: 0
+  #     - name: Setup Scala and Java
+  #       uses: olafurpg/setup-scala@v10
+  #     - name: Cache scala dependencies
+  #       uses: coursier/cache-action@v6
+  #     - name: Release artifacts
+  #       run: sbt ci-release
+  #       env:
+  #         PGP_PASSPHRASE: ${{ secrets.PGP_PASSPHRASE }}
+  #         PGP_SECRET: ${{ secrets.PGP_SECRET }}
+  #         SONATYPE_PASSWORD: ${{ secrets.SONATYPE_PASSWORD }}
+  #         SONATYPE_USERNAME: ${{ secrets.SONATYPE_USERNAME }}
