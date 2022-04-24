@@ -52,7 +52,7 @@ def zio(name: String) =
   "dev.zio" %% name % "1.0.13"
 
 def trace4cats(name: String) =
-  "io.janstenpickle" %% s"trace4cats-$name" % "0.12.0"
+  "io.janstenpickle" %% s"trace4cats-$name" % "0.13.1"
 
 def mkModule(id: String) = {
   val projectName = s"trace4cats-zio-extras-$id"
