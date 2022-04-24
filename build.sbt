@@ -31,7 +31,7 @@ lazy val core = mkModule("core")
 lazy val sttp = mkModule("sttp")
   .settings(
     libraryDependencies ++= List(
-      "com.softwaremill.sttp.client3" %% "async-http-client-backend-zio1" % "3.5.0",
+      "com.softwaremill.sttp.client3" %% "async-http-client-backend-zio1" % "3.5.2",
       trace4cats("sttp-client3"),
     )
   )
