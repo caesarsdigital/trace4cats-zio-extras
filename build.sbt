@@ -90,7 +90,7 @@ def mkModule(id: String) = {
         zio("zio"),
         zio("zio-test") % Test,
         zio("zio-test-sbt") % Test,
-        "io.github.kitlangton" %% "zio-magic" % "0.3.11" % Test,
+        "io.github.kitlangton" %% "zio-magic" % "0.3.12" % Test,
       ),
       libraryDependencies ++= {
         if (CrossVersion.partialVersion(scalaVersion.value).exists(_._1 == 2))
