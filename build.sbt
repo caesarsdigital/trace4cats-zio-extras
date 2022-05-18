@@ -40,7 +40,7 @@ lazy val sttp = mkModule("sttp")
 lazy val zhttp = mkModule("zhttp")
   .settings(
     libraryDependencies ++= List(
-      "com.softwaremill.sttp.tapir" %% "tapir-zio1-http-server" % "0.20.1",
+      "com.softwaremill.sttp.tapir" %% "tapir-zio1-http-server" % "0.20.2",
     )
   )
   .dependsOn(core)
