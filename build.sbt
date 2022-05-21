@@ -2,11 +2,11 @@ import sbt._
 
 val scala2 = "2.13.8"
 
-// val scala3 = "3.1.0"
+val scala3 = "3.1.2"
 
 ThisBuild / organization := "com.caesars"
-ThisBuild / scalaVersion := scala2
-// ThisBuild / crossScalaVersions := List(scala2, scala3)
+ThisBuild / scalaVersion := scala3
+ThisBuild / crossScalaVersions := List(scala3, scala2)
 ThisBuild / versionScheme := Some("early-semver")
 // usually, this is set by sbt-dynver. For some cases, like an out-of-bound docker image, allow override
 ThisBuild / version ~= (v => sys.env.getOrElse("SBT_VERSION_OVERRIDE", v))
@@ -23,7 +23,7 @@ lazy val core = mkModule("core")
   .settings(
     libraryDependencies ++= List(
       // TODO: replace Calvin's version with the canonical one once its released
-      "com.github.kaizen-solutions.trace4cats-newrelic" %% "trace4cats-newrelic-http-exporter" % "0.12.2",
+      trace4cats("newrelic-http-exporter"),
       "org.http4s" %% "http4s-async-http-client" % "0.23.10",
     )
   )
@@ -31,31 +31,32 @@ lazy val core = mkModule("core")
 lazy val sttp = mkModule("sttp")
   .settings(
     libraryDependencies ++= List(
-      "com.softwaremill.sttp.client3" %% "async-http-client-backend-zio1" % "3.6.1",
+      "com.softwaremill.sttp.client3" %% "async-http-client-backend-zio" % "3.5.2",
       trace4cats("sttp-client3"),
-    )
+    ).map { _.excludeAll(ExclusionRule("org.scala-lang.modules")) }
   )
   .dependsOn(core)
 
 lazy val zhttp = mkModule("zhttp")
   .settings(
     libraryDependencies ++= List(
-      "com.softwaremill.sttp.tapir" %% "tapir-zio1-http-server" % "0.20.1",
+      "com.softwaremill.sttp.tapir" %% "tapir-zio-http-server" % "1.0.0-M9",
     )
   )
   .dependsOn(core)
 
 lazy val testkit = mkModule("testkit")
+  .settings(libraryDependencies += zio("zio-test"))
   .dependsOn(core, sttp, zhttp)
 
 def zio(name: String) =
-  "dev.zio" %% name % "1.0.14"
+  "dev.zio" %% name % "2.0.0-RC5"
 
 def trace4cats(name: String) =
-  "io.janstenpickle" %% s"trace4cats-$name" % "0.12.0"
+  "io.janstenpickle" %% s"trace4cats-$name" % "0.13.1"
 
 def mkModule(id: String) = {
-  val projectName = s"trace4cats-zio-extras-$id"
+  val projectName = s"trace4cats-zio2-extras-$id"
   Project(projectName, file("modules") / id)
     .settings(
       name := projectName,
@@ -73,12 +74,11 @@ def mkModule(id: String) = {
               "-Wunused:_,-implicits",
               // helps with unused implicits warning
               "-Ywarn-macros:after",
-              "-Xsource:3",
               "-P:kind-projector:underscore-placeholders",
               "-Xsource:3"
             )
           case _ =>
-            List("-Ykind-projector:underscores")
+            Nil // List("-Ykind-projector:underscores")
         }
         "-language:postfixOps" :: opts
       },
@@ -86,11 +86,11 @@ def mkModule(id: String) = {
       libraryDependencies ++= Seq(
         trace4cats("base-zio"),
         trace4cats("inject-zio"),
-        "dev.zio" %% "zio-interop-cats" % "3.2.9.1",
+        "dev.zio" %% "zio-interop-cats" % "3.3.0-RC6",
         zio("zio"),
         zio("zio-test") % Test,
         zio("zio-test-sbt") % Test,
-        "io.github.kitlangton" %% "zio-magic" % "0.3.12" % Test,
+        // "io.github.kitlangton" %% "zio-magic" % "0.3.12" % Test,
       ),
       libraryDependencies ++= {
         if (CrossVersion.partialVersion(scalaVersion.value).exists(_._1 == 2))

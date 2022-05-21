@@ -1,26 +1,33 @@
 package com.caesars.tracing
 
-import com.caesars.tracing.TracedBackend.TracedBackendConfig
-import com.caesars.tracing.TracingUtils.entryPointLayer
+import com.caesars.tracing.sttp.{HttpClient, TracedBackend}
 import com.caesars.tracing.testing.*
 import io.janstenpickle.trace4cats.ToHeaders
 import io.janstenpickle.trace4cats.model.{SpanKind, SpanStatus}
+import io.netty.channel.{EventLoopGroup as NEventLoopGroup}
 import org.typelevel.ci.CIString
-import sttp.client3.asynchttpclient.zio.AsyncHttpClientZioBackend
-import sttp.model.Header
-import zhttp.service.EventLoopGroup
+import _root_.sttp.client3.asynchttpclient.zio.AsyncHttpClientZioBackend
 import zhttp.service.server.ServerChannelFactory
+import zhttp.service.{EventLoopGroup, ServerChannelFactory as ServerChannelFactoryService}
 import zio.*
-import zio.magic.*
 import zio.test.*
+import zio.test.TestEnvironment
 
-object ZTracerInstrumentationSpec extends DefaultRunnableSpec {
-  import TracingTestUtils.*
-  import ZTracerImplementationSpecUtils.*
+object SttpClientInstrumentationSpec extends ZIOSpecDefault {
+  import ZTracerImplementationSpecUtils.{failBackend, implementationSpec, successBackend}
 
-  override def spec = suite("Ztracer Instrumentation for zio-http and Sttp Client")(
+  val testLayer: ULayer[ZTracer & SpanRecorder] =
+    ZLayer.make[ZTracer & SpanRecorder](
+      ZLayer.succeed(TracingTestUtils.sampler),
+      TracingTestUtils.spanRecorderLayer,
+      TracingTestUtils.completer,
+      EntryPointLayer,
+      ZTracer.layer,
+    )
+
+  override val spec =
     suite("Sttp client instrumentation")(
-      testM("creates a span for a successful request") {
+      test("creates a span for a successful request") {
         implementationSpec(successBackend).map { case (spans, span, res) =>
           assertTrue(
             res.code.isSuccess,
@@ -31,7 +38,7 @@ object ZTracerInstrumentationSpec extends DefaultRunnableSpec {
           )
         }
       },
-      testM("forwards correlation headers") {
+      test("forwards correlation headers") {
         implementationSpec(successBackend).map { case (spans, _, res) =>
           val traceHeaders = ToHeaders.standard.fromContext(spans.last.context).values
           assertTrue(
@@ -41,14 +48,14 @@ object ZTracerInstrumentationSpec extends DefaultRunnableSpec {
           )
         }
       },
-      testM("preserves original headers") {
+      test("preserves original headers") {
         implementationSpec(successBackend, _.header("foo", "bar")).map { case (_, _, res) =>
           assertTrue(
-            res.request.headers.contains(Header("foo", "bar"))
+            res.request.headers("foo").contains("bar")
           )
         }
       },
-      testM("creates a span for a failed request") {
+      test("creates a span for a failed request") {
         implementationSpec(failBackend).map { case (spans, span, res) =>
           assertTrue(
             !res.code.isSuccess,
@@ -59,44 +66,82 @@ object ZTracerInstrumentationSpec extends DefaultRunnableSpec {
           )
         }
       }
-    ),
-    suite("zio-http server instrumentation")(
-      testM("creates a span for a successful request") {
-        singleAppImplementationSpec.map { case (spans, span) =>
-          assertTrue(
-            spans.length == 1,
-            span.kind == SpanKind.Server,
-            span.context.parent.isEmpty,
-            span.name == "GET /foo"
-          )
-        }
-      },
-      testM("creates a span for a failed request") {
-        failingSingleAppImplementationSpec.map { span =>
-          assertTrue(
-            span.status == SpanStatus.Internal("Internal Server Error"),
-            span.attributes.contains("status.code", 500)
-          )
-        }
-      },
-      testM("creates a span for an unmatched request") {
-        notFoundSingleAppImplementationSpec.map { span =>
-          assertTrue(
-            span.status == SpanStatus.NotFound,
-            span.attributes.contains("status.code", 404)
-          )
-        }
-      },
-      testM("creates a span for an http app generated from Tapir") {
-        singleTapirAppSpec.map { span =>
-          assertTrue(
-            span.status == SpanStatus.Internal("Bad Request"),
-            span.attributes.contains("status.code", 400)
-          )
-        }
+    ).provideSomeLayer(testLayer)
+}
+
+object ZioHttpInstrumentationSpec extends ZIOSpecDefault {
+  import ZTracerImplementationSpecUtils.*
+
+  val testLayer: ULayer[ZTracer & SpanRecorder] =
+    ZLayer.make[ZTracer & SpanRecorder](
+      ZLayer.succeed(TracingTestUtils.sampler),
+      TracingTestUtils.spanRecorderLayer,
+      TracingTestUtils.completer,
+      EntryPointLayer,
+      ZTracer.layer,
+    )
+
+  override val spec = suite("zio-http server instrumentation")(
+    test("creates a span for a successful request") {
+      singleAppImplementationSpec.map { case (spans, span) =>
+        assertTrue(
+          spans.length == 1,
+          span.kind == SpanKind.Server,
+          span.context.parent.isEmpty,
+          span.name == "GET /foo"
+        )
       }
-    ),
-    testM("A client -> server -> client -> server interaction is recorded correctly") {
+    },
+    test("creates a span for a failed request") {
+      failingSingleAppImplementationSpec.map { span =>
+        assertTrue(
+          span.status == SpanStatus.Internal("Internal Server Error"),
+          span.attributes.contains("status.code", 500)
+        )
+      }
+    },
+    test("creates a span for an unmatched request") {
+      notFoundSingleAppImplementationSpec.map { span =>
+        assertTrue(
+          span.status == SpanStatus.NotFound,
+          span.attributes.contains("status.code", 404)
+        )
+      }
+    },
+    test("creates a span for an http app generated from Tapir") {
+      singleTapirAppSpec.map { span =>
+        assertTrue(
+          span.status == SpanStatus.Internal("Bad Request"),
+          span.attributes.contains("status.code", 400)
+        )
+      }
+    },
+  )
+  .provideSomeLayer(testLayer)
+}
+object ZTracerInstrumentationSpec extends ZIOSpecDefault {
+  import ZTracerImplementationSpecUtils.*
+
+  val tracedBackend: URLayer[ZTracer, HttpClient] =
+    ZLayer.service[ZTracer] ++ ZLayer.succeed(TracedBackend.Config()) ++ AsyncHttpClientZioBackend.layer().orDie >>>
+      TracedBackend.layer
+
+  val testLayer =
+    ZLayer.make[
+      ServerChannelFactoryService & HttpClient & ZTracer & NEventLoopGroup & SpanRecorder
+    ](
+      ZLayer.succeed(TracingTestUtils.sampler),
+      TracingTestUtils.spanRecorderLayer,
+      TracingTestUtils.completer,
+      EntryPointLayer,
+      ZTracer.layer,
+      tracedBackend,
+      EventLoopGroup.auto(),
+      ServerChannelFactory.auto
+    )
+
+  override val spec = suite("Ztracer Instrumentation for zio-http and Sttp Client")(
+    test("A client -> server -> client -> server interaction is recorded correctly") {
       multiAppImplementationSpec.map { case (result, root) =>
         assertTrue(
           // only one root
@@ -114,16 +159,6 @@ object ZTracerInstrumentationSpec extends DefaultRunnableSpec {
         )
       }
     }
-  ).inject(
-    ZLayer.succeed(sampler),
-    ref,
-    completer,
-    entryPointLayer,
-    ZTracer.layer,
-    ZLayer.succeed(TracedBackendConfig()),
-    ZLayer.identity[Has[ZTracer]] ++ AsyncHttpClientZioBackend.layer().orDie ++ ZLayer
-      .identity[Has[TracedBackendConfig]] >>> TracedBackend.layer,
-    EventLoopGroup.auto(),
-    ServerChannelFactory.auto
   )
+  .provideSomeLayer[TestEnvironment & Scope](testLayer)
 }
