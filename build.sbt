@@ -22,7 +22,6 @@ lazy val root = (project in file("."))
 lazy val core = mkModule("core")
   .settings(
     libraryDependencies ++= List(
-      // TODO: replace Calvin's version with the canonical one once its released
       trace4cats("newrelic-http-exporter"),
       "org.http4s" %% "http4s-async-http-client" % "0.23.10",
     )
@@ -33,7 +32,9 @@ lazy val sttp = mkModule("sttp")
     libraryDependencies ++= List(
       "com.softwaremill.sttp.client3" %% "async-http-client-backend-zio" % "3.5.2",
       trace4cats("sttp-client3"),
-    ).map { _.excludeAll(ExclusionRule("org.scala-lang.modules")) }
+    )
+    // "if you encounter this compile error, add this exclusion rule"?
+    // .map { _.excludeAll(ExclusionRule("org.scala-lang.modules")) }
   )
   .dependsOn(core)
 

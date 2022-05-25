@@ -48,9 +48,17 @@ final case class ZTracer private (
       kind: SpanKind = SpanKind.Internal,
       name: String
   )(f: ZSpan => ZIO[R, E, A]): ZIO[R, E, A] =
+    fromHeaders(headers, kind, name, ErrorHandler.empty)(f)
+
+  def fromHeaders[R, E, A](
+      headers: TraceHeaders,
+      kind: SpanKind,
+      name: String,
+      errorHandler: ErrorHandler,
+  )(f: ZSpan => ZIO[R, E, A]): ZIO[R, E, A] =
     ZIO.scoped[R] {
       for {
-        child  <- entryPoint.continueOrElseRoot(name, kind, headers).map(ZSpan(_)).toScopedZIO.orElse(ZSpan.noop)
+        child  <- entryPoint.continueOrElseRoot(name, kind, headers, errorHandler).map(ZSpan(_)).toScopedZIO.orElse(ZSpan.noop)
         result <- currentSpan.locally(Some(child))(f(child))
       } yield result
     }
