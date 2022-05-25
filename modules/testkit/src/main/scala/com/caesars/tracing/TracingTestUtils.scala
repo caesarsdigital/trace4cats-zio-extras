@@ -75,8 +75,8 @@ object ZTracerImplementationSpecUtils {
     SttpBackendStub(new RIOMonadAsyncError[Any]).whenAnyRequest.thenRespondServerError()
 
   def implementationSpec(be: HttpClient): RIO[
-      ZTracer & SpanRecorder,
-      (Queue[CompletedSpan], CompletedSpan, SttpResponse[Either[String, String]])
+    ZTracer & SpanRecorder,
+    (Queue[CompletedSpan], CompletedSpan, SttpResponse[Either[String, String]])
   ] = implementationSpec(be, identity)
 
   def implementationSpec(

@@ -65,7 +65,7 @@ final case class ZTracer private (
 }
 
 object ZTracer {
-  val init: URIO[Scope & EntryPoint[Task], ZTracer] = 
+  val init: URIO[Scope & EntryPoint[Task], ZTracer] =
     for {
       entryPoint <- ZIO.service[EntryPoint[Task]]
       fiberRef   <- FiberRef.make(Option.empty[ZSpan])

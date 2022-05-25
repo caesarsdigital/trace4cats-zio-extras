@@ -117,7 +117,7 @@ object ZioHttpInstrumentationSpec extends ZIOSpecDefault {
       }
     },
   )
-  .provideSomeLayer(testLayer)
+    .provideSomeLayer(testLayer)
 }
 object ZTracerInstrumentationSpec extends ZIOSpecDefault {
   import ZTracerImplementationSpecUtils.*
@@ -160,5 +160,5 @@ object ZTracerInstrumentationSpec extends ZIOSpecDefault {
       }
     }
   )
-  .provideSomeLayer[TestEnvironment & Scope](testLayer)
+    .provideSomeLayer[TestEnvironment & Scope](testLayer)
 }
