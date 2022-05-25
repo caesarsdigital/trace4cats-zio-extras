@@ -28,5 +28,5 @@ Provides helpers to faciliate testing where a `ZTracer` capability is required i
 Add the following to your `build.sbt`:
 
 ```scala
-libraryDependencies += "com.github.caesarsdigital.trace4cats-zio-extras" %% "trace4cats-zio-extras-${MODULE NAME}" % "${VERSION}"
+libraryDependencies += "com.github.caesarsdigital.trace4cats-zio-extras" %% "trace4cats-zio2-extras-${MODULE NAME}" % "${VERSION}"
 ```
