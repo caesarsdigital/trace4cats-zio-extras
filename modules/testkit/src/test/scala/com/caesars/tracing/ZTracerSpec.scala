@@ -2,23 +2,23 @@ package com.caesars.tracing
 
 import com.caesars.tracing.testing.*
 import io.janstenpickle.trace4cats.`export`.RefSpanCompleter
-import io.janstenpickle.trace4cats.model.AttributeValue.StringValue
+import io.janstenpickle.trace4cats.inject.EntryPoint
 import io.janstenpickle.trace4cats.model.{SpanContext, SpanKind, SpanStatus}
+import io.janstenpickle.trace4cats.model.AttributeValue.StringValue
 import zio.*
-import zio.magic.*
+import zio.interop.catz.*
 import zio.test.*
-import zio.test.environment.TestEnvironment
 
-object ZTracerSpec extends DefaultRunnableSpec {
+object ZTracerSpec extends ZIOSpecDefault {
   import TracingTestUtils.*
   import ZTracerSpecUtils.*
 
-  override def spec: ZSpec[TestEnvironment, Any] = {
+  override val spec =
     suite("ZTracer")(
-      testM("starts out with no span") {
+      test("starts out with no span") {
         ZIO.service[ZTracer].flatMap(_.context).map(context => assertTrue(context == SpanContext.invalid))
       },
-      testM("can create a span and add attributes to it") {
+      test("can create a span and add attributes to it") {
         spanSpec()(span => span.putAll(("fieldName", StringValue("fieldValue"))), completer => completer.get.map(_.head)).map {
           cs =>
             assertTrue(
@@ -27,14 +27,14 @@ object ZTracerSpec extends DefaultRunnableSpec {
             )
         }
       },
-      testM("can create a span and set its status") {
+      test("can create a span and set its status") {
         spanSpec()(_.setStatus(SpanStatus.Aborted), completer => completer.get.map(_.head)).map { cs =>
           assertTrue(
             cs.status == SpanStatus.Aborted
           )
         }
       },
-      testM("can continue a span from empty headers") {
+      test("can continue a span from empty headers") {
         spanFromHeadersSpec(_.get.map(_.head)).map { cs =>
           assertTrue(
             cs.isRoot,
@@ -42,7 +42,7 @@ object ZTracerSpec extends DefaultRunnableSpec {
           )
         }
       },
-      testM("can simultaneously create multiple roots") {
+      test("can simultaneously create multiple roots") {
         def app(name: String) = for {
           tracer <- ZIO.service[ZTracer]
           _      <- tracer.span(name)(_.putAll("a" -> StringValue(name)))
@@ -51,7 +51,7 @@ object ZTracerSpec extends DefaultRunnableSpec {
         val appNames = 1 to 20 map (i => s"app $i") toSet
 
         for {
-          _         <- ZIO.foreachPar_(appNames)(app)
+          _         <- ZIO.foreachPar(appNames)(app)
           completer <- ZIO.service[RefSpanCompleter[Task]]
           result    <- completer.get
         } yield assertTrue(
@@ -61,10 +61,12 @@ object ZTracerSpec extends DefaultRunnableSpec {
             appNames.asInstanceOf[Set[Any]]
         )
       },
-      testM("can create nested spans") {
+      test("can create nested spans") {
         for {
-          tracer    <- ZIO.service[ZTracer]
-          _         <- tracer.span("parent")(_.child("child", SpanKind.Internal).use(_ => ZIO.unit))
+          tracer <- ZIO.service[ZTracer]
+          _ <- tracer.span("parent") { span =>
+            ZIO.scoped { span.child("child", SpanKind.Internal) }
+          }
           completer <- ZIO.service[RefSpanCompleter[Task]]
           result    <- completer.get
           parent = result.find(s => s.name == "parent").getOrElse(throw new Exception("boom"))
@@ -75,10 +77,12 @@ object ZTracerSpec extends DefaultRunnableSpec {
           child.context.parent.map(_.spanId).contains(parent.context.spanId)
         )
       }
-    ).inject(
-      refSpanCompleter,
-      entryPointRef,
-      ZTracer.layer
     )
-  }
+      .provideLayer(
+        ZLayer.make[RefSpanCompleter[Task] & EntryPoint[Task] & ZTracer](
+          ZLayer.fromZIO(RefSpanCompleter[Task]("my-service").orDie),
+          entryPointRef,
+          ZTracer.layer
+        )
+      )
 }

@@ -23,7 +23,7 @@ object TracedHttp {
   def layer[R](
       dropRequestWhen: Request => Boolean = _ => false,
       dropHeadersWhen: String => Boolean = HeaderNames.isSensitive
-  )(app: HttpApp[R, Throwable]): URIO[Has[ZTracer], HttpApp[R, Throwable]] =
+  )(app: HttpApp[R, Throwable]): URIO[ZTracer, HttpApp[R, Throwable]] =
     ZIO.service[ZTracer].map(apply[R](_, dropRequestWhen, dropHeadersWhen)(app))
 }
 
@@ -84,17 +84,16 @@ object TracedHttpUtils {
 
   // TODO: incorporate response body into the span status
   val toSpanStatus: Status => SpanStatus = {
-    case Status.BAD_REQUEST           => SpanStatus.Internal("Bad Request")
-    case Status.INTERNAL_SERVER_ERROR => SpanStatus.Internal("Internal Server Error")
-    case Status.UNAUTHORIZED          => SpanStatus.Unauthenticated
-    case Status.FORBIDDEN             => SpanStatus.PermissionDenied
-    case Status.NOT_FOUND             => SpanStatus.NotFound
-    case Status.TOO_MANY_REQUESTS     => SpanStatus.Unavailable
-    case Status.BAD_GATEWAY           => SpanStatus.Unavailable
-    case Status.SERVICE_UNAVAILABLE   => SpanStatus.Unavailable
-    case Status.GATEWAY_TIMEOUT       => SpanStatus.Unavailable
-    case status if status.isSuccess   => SpanStatus.Ok
-    case _                            => SpanStatus.Unknown
+    case Status.BadRequest          => SpanStatus.Internal("Bad Request")
+    case Status.InternalServerError => SpanStatus.Internal("Internal Server Error")
+    case Status.Unauthorized        => SpanStatus.Unauthenticated
+    case Status.Forbidden           => SpanStatus.PermissionDenied
+    case Status.NotFound            => SpanStatus.NotFound
+    case Status.TooManyRequests     => SpanStatus.Unavailable
+    case Status.BadGateway          => SpanStatus.Unavailable
+    case Status.ServiceUnavailable  => SpanStatus.Unavailable
+    case Status.GatewayTimeout      => SpanStatus.Unavailable
+    case status if status.isSuccess => SpanStatus.Ok
+    case _                          => SpanStatus.Unknown
   }
-
 }

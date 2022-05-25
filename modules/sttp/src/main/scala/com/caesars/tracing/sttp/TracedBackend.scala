@@ -1,27 +1,28 @@
 package com.caesars.tracing
+package sttp
 
 import io.janstenpickle.trace4cats.{ErrorHandler, ToHeaders}
 import io.janstenpickle.trace4cats.model.{SampleDecision, SpanKind}
 import io.janstenpickle.trace4cats.sttp.client3.{SttpRequest, SttpSpanNamer}
 import io.janstenpickle.trace4cats.sttp.common.{SttpHeaders, SttpStatusMapping}
-import sttp.capabilities.Effect
-import sttp.client3.impl.zio.RIOMonadAsyncError
-import sttp.client3.*
-import sttp.monad.MonadError
+import _root_.sttp.capabilities.Effect
+import _root_.sttp.client3.impl.zio.RIOMonadAsyncError
+import _root_.sttp.client3.*
+import _root_.sttp.monad.MonadError
 import zio.*
 
 object TracedBackend {
-  final case class TracedBackendConfig(
+  case class Config(
       spanNamer: SttpSpanNamer = SttpSpanNamer.methodWithPath,
       toHeaders: ToHeaders = ToHeaders.all
   )
 
   def apply(
-      delegate: SttpBackend[Task, ZioSttpCapabilities],
+      delegate: HttpClient,
       tracer: ZTracer,
-      config: TracedBackendConfig = TracedBackendConfig()
-  ): SttpBackend[Task, ZioSttpCapabilities] =
-    new SttpBackend[Task, ZioSttpCapabilities] {
+      config: Config = Config()
+  ): HttpClient =
+    new HttpClient {
       override def send[T, R >: ZioSttpCapabilities & Effect[Task]](request: Request[T, R]): Task[Response[T]] = {
         def createSpannedResponse(span: ZSpan, request: Request[T, R]): Task[Response[T]] = {
           val headers = config.toHeaders.fromContext(span.context)
@@ -51,8 +52,12 @@ object TracedBackend {
       override def responseMonad: MonadError[Task] = new RIOMonadAsyncError[Any]
     }
 
-  val layer: URLayer[
-    Has[ZTracer] & Has[SttpBackend[Task, ZioSttpCapabilities]] & Has[TracedBackendConfig],
-    Has[SttpBackend[Task, ZioSttpCapabilities]]
-  ] = (TracedBackend(_, _, _)).toLayer
+  val layer: URLayer[ZTracer & HttpClient & Config, HttpClient] =
+    ZLayer.fromZIO(
+      for {
+        delegate <- ZIO.service[HttpClient]
+        tracer   <- ZIO.service[ZTracer]
+        config   <- ZIO.service[Config]
+      } yield TracedBackend(delegate, tracer, config)
+    )
 }
