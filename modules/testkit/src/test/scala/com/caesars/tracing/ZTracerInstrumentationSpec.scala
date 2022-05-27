@@ -1,6 +1,5 @@
 package com.caesars.tracing
 
-import com.caesars.tracing.TracedBackend.TracedBackendConfig
 import com.caesars.tracing.TracingUtils.entryPointLayer
 import com.caesars.tracing.testing.*
 import io.janstenpickle.trace4cats.ToHeaders
@@ -11,7 +10,6 @@ import sttp.model.Header
 import zhttp.service.EventLoopGroup
 import zhttp.service.server.ServerChannelFactory
 import zio.*
-import zio.magic.*
 import zio.test.*
 
 object ZTracerInstrumentationSpec extends DefaultRunnableSpec {
@@ -114,7 +112,7 @@ object ZTracerInstrumentationSpec extends DefaultRunnableSpec {
         )
       }
     }
-  ).inject(
+  ).provideCustomLayer(yy) /*.inject(
     ZLayer.succeed(sampler),
     ref,
     completer,
@@ -125,5 +123,10 @@ object ZTracerInstrumentationSpec extends DefaultRunnableSpec {
       .identity[Has[TracedBackendConfig]] >>> TracedBackend.layer,
     EventLoopGroup.auto(),
     ServerChannelFactory.auto
-  )
+  )*/
+
+
+  val xx = ref >+> (((ZLayer.succeed(sampler) ++ completer) >>> entryPointLayer) >>> ZTracer.layer)
+
+  val yy = EventLoopGroup.auto() ++ ServerChannelFactory.auto ++ AsyncHttpClientZioBackend.layer().orDie ++ xx
 }

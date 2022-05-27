@@ -5,7 +5,6 @@ import io.janstenpickle.trace4cats.`export`.RefSpanCompleter
 import io.janstenpickle.trace4cats.model.AttributeValue.StringValue
 import io.janstenpickle.trace4cats.model.{SpanContext, SpanKind, SpanStatus}
 import zio.*
-import zio.magic.*
 import zio.test.*
 import zio.test.environment.TestEnvironment
 
@@ -75,10 +74,6 @@ object ZTracerSpec extends DefaultRunnableSpec {
           child.context.parent.map(_.spanId).contains(parent.context.spanId)
         )
       }
-    ).inject(
-      refSpanCompleter,
-      entryPointRef,
-      ZTracer.layer
-    )
+    ).provideCustomLayer(refSpanCompleter >+> entryPointRef >+> ZTracer.layer)
   }
 }
