@@ -2,7 +2,6 @@ package com.caesars.tracing
 
 import com.caesars.tracing.testing.*
 import io.janstenpickle.trace4cats.`export`.RefSpanCompleter
-import io.janstenpickle.trace4cats.inject.EntryPoint
 import io.janstenpickle.trace4cats.model.{SpanContext, SpanKind, SpanStatus}
 import io.janstenpickle.trace4cats.model.AttributeValue.StringValue
 import zio.*
@@ -79,10 +78,8 @@ object ZTracerSpec extends ZIOSpecDefault {
       }
     )
       .provideLayer(
-        ZLayer.make[RefSpanCompleter[Task] & EntryPoint[Task] & ZTracer](
-          ZLayer.fromZIO(RefSpanCompleter[Task]("my-service").orDie),
-          entryPointRef,
+        ZLayer.fromZIO(RefSpanCompleter[Task]("my-service").orDie) >+>
+          entryPointRef >+>
           ZTracer.layer
-        )
       )
 }

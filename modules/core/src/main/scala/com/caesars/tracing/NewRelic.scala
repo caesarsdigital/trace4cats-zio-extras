@@ -7,9 +7,9 @@ import org.asynchttpclient.DefaultAsyncHttpClientConfig
 import org.http4s.asynchttpclient.client.AsyncHttpClient
 import org.http4s.client.Client
 import org.http4s.client.middleware.Logger
+import org.typelevel.ci.CIString
 import zio.*
 import zio.interop.catz.*
-import io.janstenpickle.trace4cats.inject.EntryPoint
 
 object NewRelic {
   case class CompleterConfig(traceProcess: TraceProcess, apiKey: String, endpoint: Endpoint)
@@ -25,7 +25,14 @@ object NewRelic {
             // these are overridable using system properties if need be
             new DefaultAsyncHttpClientConfig.Builder().setUseProxySelector(true).build()
           }
-          .map(Logger(logHeaders = true, logBody = false, logAction = Some(s => ZIO.debug(s))))
+          .map(
+            Logger(
+              logHeaders = true,
+              logBody = false,
+              redactHeadersWhen = _.compareTo(CIString("Api-Key")) == 0,
+              logAction = Some(s => ZIO.logInfo(s))
+            )
+          )
           .toScopedZIO
           .orDie
       )
@@ -45,11 +52,11 @@ object NewRelic {
       }.orDie
   }
 
-  val EntryPointLayer: URLayer[CompleterConfig, EntryPoint[Task]] = {
+  val ZEntryPointLayer: URLayer[CompleterConfig, ZEntryPoint] = {
     val completer = ZLayer.service[CompleterConfig] >>> SpanCompleterLayer
 
     ZLayer.succeed(SpanSampler.always[Task]) ++
       completer >>>
-      com.caesars.tracing.EntryPointLayer
+      ZEntryPoint.layer
   }
 }

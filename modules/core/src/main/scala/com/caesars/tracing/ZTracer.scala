@@ -1,25 +1,35 @@
 package com.caesars.tracing
 
-import cats.data.NonEmptyList
-import io.janstenpickle.trace4cats.inject.EntryPoint
+import cats.syntax.option.*
+import io.janstenpickle.trace4cats.{ErrorHandler, ToHeaders}
+import io.janstenpickle.trace4cats.inject.SpanParams
 import io.janstenpickle.trace4cats.model.*
-import io.janstenpickle.trace4cats.{ErrorHandler, Span}
 import zio.*
-import zio.interop.catz.*
 
-//TODO: find away to remove the option
+//TODO: find a way to remove the option
 //We have the following problem:
 //In application code, we should be blissfully unaware of what spans have been created before and where we are in the structure
 //Specifically, you should not need to know whether you are creating a root span or a child span
 //Also, applications may have more than one root span
 
 //What we would like, is a ZTracer that always has a span, and can perform `context`, `setStatus`, `putAll` and `span` safely
-final case class ZTracer private (
+case class ZTracer private (
     private val currentSpan: FiberRef[Option[ZSpan]],
-    private val entryPoint: EntryPoint[Task]
-) { self =>
-  def context: UIO[SpanContext] =
+    private val entryPoint: ZEntryPoint
+) {
+  val context: UIO[SpanContext] =
     currentSpan.get.map(_.fold(SpanContext.invalid)(_.context))
+
+  def blankCurrentSpan: UIO[Unit] = currentSpan.set(None)
+
+  def setCurrentSpan(in: ZSpan): UIO[Unit] =
+    currentSpan.set(in.some)
+
+  def extractHeaders(headerTypes: ToHeaders): UIO[TraceHeaders] =
+    currentSpan.get.map {
+      case Some(span) => span.extractHeaders(headerTypes)
+      case None       => headerTypes.fromContext(SpanContext.invalid)
+    }
 
   def span[R, E, A](
       name: String,
@@ -30,11 +40,7 @@ final case class ZTracer private (
       currentSpan.get
         .flatMap {
           case None =>
-            entryPoint
-              .root(name, kind, errorHandler)
-              .map(ZSpan(_))
-              .toScopedZIO
-              .orElse(ZSpan.noop)
+            entryPoint.rootSpan(name, kind, errorHandler)
           case Some(span) =>
             span.child(name, kind, errorHandler)
         }
@@ -58,37 +64,104 @@ final case class ZTracer private (
   )(f: ZSpan => ZIO[R, E, A]): ZIO[R, E, A] =
     ZIO.scoped[R] {
       for {
-        child  <- entryPoint.continueOrElseRoot(name, kind, headers, errorHandler).map(ZSpan(_)).toScopedZIO.orElse(ZSpan.noop)
+        child  <- entryPoint.continueOrElseRootSpan(name, kind, headers, errorHandler)
         result <- currentSpan.locally(Some(child))(f(child))
       } yield result
     }
+
+  def fromHeaders[R, E, A](
+      toHeaders: ToHeaders,
+      name: String,
+      kind: SpanKind,
+      errorHandler: ErrorHandler,
+  )(f: ZSpan => ZIO[R, E, A]): ZIO[R, E, A] =
+    extractHeaders(toHeaders).flatMap {
+      fromHeaders(_, kind, name, errorHandler)(f)
+    }
+
+  def putAll(attrs: Map[String, AttributeValue]): UIO[Unit] =
+    currentSpan.get
+      .flatMap(
+        ZIO.whenCase(_) { case Some(cs) =>
+          cs.putAll(attrs)
+        }
+      )
+      .unit
 }
 
 object ZTracer {
-  val init: URIO[Scope & EntryPoint[Task], ZTracer] =
-    for {
-      entryPoint <- ZIO.service[EntryPoint[Task]]
-      fiberRef   <- FiberRef.make(Option.empty[ZSpan])
-    } yield new ZTracer(currentSpan = fiberRef, entryPoint)
+  // Accessors
+  val context: URIO[ZTracer, SpanContext] =
+    ZIO.serviceWithZIO[ZTracer] { _.context }
 
-  val layer: URLayer[EntryPoint[Task], ZTracer] = ZLayer.scoped(init)
-}
+  val blankCurrentSpan: URIO[ZTracer, Unit] =
+    ZIO.serviceWithZIO[ZTracer] { _.blankCurrentSpan }
 
-class ZSpan(span: Span[Task]) {
-  def context: SpanContext = span.context
-  def put(key: String, value: AttributeValue): UIO[Unit] = span.put(key, value).ignore
-  def putAll(fields: (String, AttributeValue)*): UIO[Unit] = span.putAll(fields*).ignore
-  def putAll(fields: Map[String, AttributeValue]): UIO[Unit] = span.putAll(fields).ignore
-  def setStatus(spanStatus: SpanStatus): UIO[Unit] = span.setStatus(spanStatus).ignore
-  def addLink(link: Link): UIO[Unit] = span.addLink(link).ignore
-  def addLinks(links: NonEmptyList[Link]): UIO[Unit] = span.addLinks(links).ignore
-  def child(name: String, kind: SpanKind): URIO[Scope, ZSpan] =
-    span.child(name, kind).map(ZSpan(_)).toScopedZIO.orElse(ZSpan.noop)
-  def child(name: String, kind: SpanKind, errorHandler: ErrorHandler): URIO[Scope, ZSpan] =
-    span.child(name, kind, errorHandler).map(ZSpan(_)).toScopedZIO.orElse(ZSpan.noop)
-}
+  def setCurrentSpan(in: ZSpan): URIO[ZTracer, Unit] =
+    ZIO.serviceWithZIO[ZTracer] { _.setCurrentSpan(in) }
 
-object ZSpan {
-  def apply(span: Span[Task]): ZSpan = new ZSpan(span)
-  val noop: URIO[Scope, ZSpan] = Span.noop[Task].map(ZSpan(_)).toScopedZIO.orDie
+  def putAll(attrs: Map[String, AttributeValue]): URIO[ZTracer, Unit] =
+    ZIO.serviceWithZIO[ZTracer] { _.putAll(attrs) }
+
+  def extractHeaders(headerTypes: ToHeaders): URIO[ZTracer, TraceHeaders] =
+    ZIO.serviceWithZIO[ZTracer] { _.extractHeaders(headerTypes) }
+
+  def span[R, E, A](
+      name: String,
+      kind: SpanKind = SpanKind.Internal,
+      errorHandler: ErrorHandler = ErrorHandler.empty
+  )(f: ZSpan => ZIO[R, E, A]): ZIO[R & ZTracer, E, A] =
+    ZIO.serviceWithZIO[ZTracer] { _.span(name, kind, errorHandler)(f) }
+
+  def fromHeaders[R, E, A](
+      headers: TraceHeaders,
+      name: String,
+      kind: SpanKind = SpanKind.Internal,
+  )(f: ZSpan => ZIO[R, E, A]): ZIO[R & ZTracer, E, A] =
+    fromHeaders(headers, name, kind, ErrorHandler.empty)(f)
+
+  def fromHeaders[R, E, A](
+      headers: TraceHeaders,
+      name: String,
+      kind: SpanKind,
+      errorHandler: ErrorHandler,
+  )(f: ZSpan => ZIO[R, E, A]): ZIO[R & ZTracer, E, A] =
+    ZIO.serviceWithZIO[ZTracer] { _.fromHeaders(headers, kind, name, errorHandler)(f) }
+
+  def fromHeaders[R, E, A](
+      toHeaders: ToHeaders,
+      name: String,
+      kind: SpanKind,
+      errorHandler: ErrorHandler,
+  )(f: ZSpan => ZIO[R, E, A]): ZIO[R & ZTracer, E, A] =
+    ZIO.serviceWithZIO[ZTracer] { _.fromHeaders(toHeaders, name, kind, errorHandler)(f) }
+
+  // Constructors
+  def make(
+      params: SpanParams,
+      entryPoint: ZEntryPoint
+  ): URIO[Scope, ZTracer] =
+    entryPoint
+      .continueOrElseRootSpan(params._1, params._2, params._3, params._4)
+      .flatMap { span => make(span.some, entryPoint) }
+
+  def make(current: ZSpan, entryPoint: ZEntryPoint): URIO[Scope, ZTracer] =
+    make(current.some, entryPoint)
+
+  def make(entryPoint: ZEntryPoint): URIO[Scope, ZTracer] =
+    make(none[ZSpan], entryPoint)
+
+  def make(current: Option[ZSpan], entryPoint: ZEntryPoint): URIO[Scope, ZTracer] =
+    FiberRef
+      .make[Option[ZSpan]](
+        initial = current,
+        // join = (parent, _) => parent // child spans should never be committed to parent, or should they?
+      )
+      .map { new ZTracer(_, entryPoint) }
+
+  val layer: URLayer[ZEntryPoint, ZTracer] = ZLayer.scoped(
+    ZIO
+      .service[ZEntryPoint]
+      .flatMap(make(_))
+  )
 }

@@ -4,7 +4,6 @@ import cats.effect.{Ref as CERef}
 import com.caesars.tracing.sttp.{HttpClient, TracedBackend}
 import com.caesars.tracing.testing.SpanRecorder
 import io.janstenpickle.trace4cats.`export`.RefSpanCompleter
-import io.janstenpickle.trace4cats.inject.EntryPoint
 import io.janstenpickle.trace4cats.kernel.{SpanCompleter, SpanSampler}
 import io.janstenpickle.trace4cats.model.{CompletedSpan, SpanKind, TraceHeaders, TraceProcess}
 import scala.collection.immutable.Queue
@@ -21,10 +20,9 @@ import zio.interop.catz.implicits.rts
 object TracingTestUtils {
   val sampler: SpanSampler[Task] = SpanSampler.always[Task]
 
-  val entryPointRef: URLayer[SpanCompleter[Task], EntryPoint[Task]] =
-    ZLayer.fromZIO(
-      ZIO.serviceWith { EntryPoint(sampler, _) }
-    )
+  val entryPointRef: URLayer[SpanCompleter[Task], ZEntryPoint] =
+    ZLayer.service[SpanCompleter[Task]] ++ ZLayer.succeed(sampler) >>>
+      ZEntryPoint.layer
 
   val spanRecorderLayer: ULayer[SpanRecorder] =
     ZLayer.fromZIO(
@@ -106,7 +104,7 @@ object ZTracerImplementationSpecUtils {
 
     for {
       tracedApp1 <- TracedHttp.layer()(app)
-      _          <- tracedApp1(Request(method = Method.GET, url = URL(Path("/foo")))).orDieWith(_.get)
+      _          <- tracedApp1(Request(method = Method.GET, url = URL(path = Path(Vector("foo"), trailingSlash = false)))).orDieWith(_.get)
       ref        <- ZIO.service[cats.effect.Ref[Task, Queue[CompletedSpan]]]
       spans      <- ref.get
       span = spans.head
@@ -124,7 +122,7 @@ object ZTracerImplementationSpecUtils {
 
     for {
       tracedApp <- TracedHttp.layer()(app.catchAll(recover))
-      _         <- tracedApp(Request(method = Method.GET, url = URL(Path("/foo")))).either
+      _         <- tracedApp(Request(method = Method.GET, url = URL(path = Path(Vector("foo"), trailingSlash = false)))).either
       ref       <- ZIO.service[cats.effect.Ref[Task, Queue[CompletedSpan]]]
       spans     <- ref.get
       span = spans.head
@@ -139,7 +137,7 @@ object ZTracerImplementationSpecUtils {
 
     for {
       tracedApp <- TracedHttp.layer()(app ++ Http.notFound)
-      _         <- tracedApp(Request(method = Method.GET, url = URL(Path("/foo")))).either
+      _         <- tracedApp(Request(method = Method.GET, url = URL(path = Path(Vector("foo"), trailingSlash = false)))).either
       ref       <- ZIO.service[cats.effect.Ref[Task, Queue[CompletedSpan]]]
       spans     <- ref.get
       span = spans.head
@@ -161,7 +159,7 @@ object ZTracerImplementationSpecUtils {
 
     for {
       tracedApp <- TracedHttp.layer()(tapirApp)
-      _         <- tracedApp(Request(method = Method.GET, url = URL(Path("/foo")))).either
+      _         <- tracedApp(Request(method = Method.GET, url = URL(path = Path(Vector("foo"), trailingSlash = false)))).either
       ref       <- ZIO.service[SpanRecorder]
       spans     <- ref.get
       span = spans.head

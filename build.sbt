@@ -27,21 +27,23 @@ lazy val core = mkModule("core")
     )
   )
 
+/* excludeAll(ExclusionRule("org.scala-lang.modules")) because:
+    [error] Modules were resolved with conflicting cross-version suffixes in ProjectRef(uri("file:/Users/anakos/projects/pam/trace4cats-zio-extras/"), "trace4cats-zio2-extras-sttp"):
+    [error]    org.scala-lang.modules:scala-collection-compat _3, _2.13
+ */
 lazy val sttp = mkModule("sttp")
   .settings(
     libraryDependencies ++= List(
-      "com.softwaremill.sttp.client3" %% "async-http-client-backend-zio" % "3.5.2",
+      "com.softwaremill.sttp.client3" %% "async-http-client-backend-zio" % "3.6.2",
       trace4cats("sttp-client3"),
-    )
-    // "if you encounter this compile error, add this exclusion rule"?
-    // .map { _.excludeAll(ExclusionRule("org.scala-lang.modules")) }
+    ).map { _.excludeAll(ExclusionRule("org.scala-lang.modules")) }
   )
   .dependsOn(core)
 
 lazy val zhttp = mkModule("zhttp")
   .settings(
     libraryDependencies ++= List(
-      "com.softwaremill.sttp.tapir" %% "tapir-zio-http-server" % "1.0.0-M9",
+      "com.softwaremill.sttp.tapir" %% "tapir-zio-http-server" % "1.0.0-RC3",
     )
   )
   .dependsOn(core)
@@ -51,7 +53,7 @@ lazy val testkit = mkModule("testkit")
   .dependsOn(core, sttp, zhttp)
 
 def zio(name: String) =
-  "dev.zio" %% name % "2.0.0-RC5"
+  "dev.zio" %% name % "2.0.0-RC6"
 
 def trace4cats(name: String) =
   "io.janstenpickle" %% s"trace4cats-$name" % "0.13.1"
@@ -87,7 +89,7 @@ def mkModule(id: String) = {
       libraryDependencies ++= Seq(
         trace4cats("base-zio"),
         trace4cats("inject-zio"),
-        "dev.zio" %% "zio-interop-cats" % "3.3.0-RC6",
+        "dev.zio" %% "zio-interop-cats" % "3.3.0-RC7",
         zio("zio"),
         zio("zio-test") % Test,
         zio("zio-test-sbt") % Test,
