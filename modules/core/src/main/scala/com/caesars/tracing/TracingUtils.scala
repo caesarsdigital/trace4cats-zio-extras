@@ -47,7 +47,8 @@ object TracingUtils {
 
   val entryPointLayer: URLayer[Has[SpanSampler[Task]] & Has[SpanCompleter[Task]], Has[EntryPoint[Task]]] =
     (for {
-      (sampler, completer) <- ZIO.services[SpanSampler[Task], SpanCompleter[Task]]
+      sampler   <- ZIO.service[SpanSampler[Task]]
+      completer <- ZIO.service[SpanCompleter[Task]]
     } yield EntryPoint[Task](sampler, completer)).toLayer
 
   val newRelicEntryPoint: URLayer[Has[NewrelicCompleterConfig], Has[EntryPoint[Task]]] =

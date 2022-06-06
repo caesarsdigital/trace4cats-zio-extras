@@ -5,7 +5,6 @@ import io.janstenpickle.trace4cats.`export`.RefSpanCompleter
 import io.janstenpickle.trace4cats.model.AttributeValue.StringValue
 import io.janstenpickle.trace4cats.model.{SpanContext, SpanKind, SpanStatus}
 import zio.*
-import zio.magic.*
 import zio.test.*
 import zio.test.environment.TestEnvironment
 
@@ -19,12 +18,11 @@ object ZTracerSpec extends DefaultRunnableSpec {
         ZIO.service[ZTracer].flatMap(_.context).map(context => assertTrue(context == SpanContext.invalid))
       },
       testM("can create a span and add attributes to it") {
-        spanSpec()(span => span.putAll(("fieldName", StringValue("fieldValue"))), completer => completer.get.map(_.head)).map {
-          cs =>
-            assertTrue(
-              cs.attributes.contains("fieldName", "fieldValue"),
-              cs.name == "root"
-            )
+        spanSpec()(_.putAll(("fieldName", StringValue("fieldValue"))), queue => queue.get.map(_.head)).map { cs =>
+          assertTrue(
+            cs.attributes.contains("fieldName", "fieldValue"),
+            cs.name == "root"
+          )
         }
       },
       testM("can create a span and set its status") {
@@ -75,10 +73,6 @@ object ZTracerSpec extends DefaultRunnableSpec {
           child.context.parent.map(_.spanId).contains(parent.context.spanId)
         )
       }
-    ).inject(
-      refSpanCompleter,
-      entryPointRef,
-      ZTracer.layer
-    )
+    ).provideCustomLayer(refSpanCompleter >+> entryPointRef >+> ZTracer.layer)
   }
 }
