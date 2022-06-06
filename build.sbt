@@ -1,12 +1,11 @@
 import sbt._
 
 val scala2 = "2.13.8"
-
-// val scala3 = "3.1.0"
+val scala3 = "3.1.2"
 
 ThisBuild / organization := "com.caesars"
-ThisBuild / scalaVersion := scala2
-// ThisBuild / crossScalaVersions := List(scala2, scala3)
+ThisBuild / scalaVersion := scala3
+ThisBuild / crossScalaVersions := List(scala3, scala2)
 ThisBuild / versionScheme := Some("early-semver")
 // usually, this is set by sbt-dynver. For some cases, like an out-of-bound docker image, allow override
 ThisBuild / version ~= (v => sys.env.getOrElse("SBT_VERSION_OVERRIDE", v))
@@ -23,7 +22,7 @@ lazy val core = mkModule("core")
   .settings(
     libraryDependencies ++= List(
       // TODO: replace Calvin's version with the canonical one once its released
-      "com.github.kaizen-solutions.trace4cats-newrelic" %% "trace4cats-newrelic-http-exporter" % "0.12.2",
+      trace4cats("newrelic-http-exporter"),
       "org.http4s" %% "http4s-async-http-client" % "0.23.10",
     )
   )
@@ -73,12 +72,11 @@ def mkModule(id: String) = {
               "-Wunused:_,-implicits",
               // helps with unused implicits warning
               "-Ywarn-macros:after",
-              "-Xsource:3",
               "-P:kind-projector:underscore-placeholders",
               "-Xsource:3"
             )
           case _ =>
-            List("-Ykind-projector:underscores")
+            Nil
         }
         "-language:postfixOps" :: opts
       },
@@ -89,8 +87,7 @@ def mkModule(id: String) = {
         "dev.zio" %% "zio-interop-cats" % "3.2.9.1",
         zio("zio"),
         zio("zio-test") % Test,
-        zio("zio-test-sbt") % Test,
-        "io.github.kitlangton" %% "zio-magic" % "0.3.12" % Test,
+        zio("zio-test-sbt") % Test
       ),
       libraryDependencies ++= {
         if (CrossVersion.partialVersion(scalaVersion.value).exists(_._1 == 2))
