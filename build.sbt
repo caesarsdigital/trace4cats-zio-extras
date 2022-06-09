@@ -22,8 +22,7 @@ lazy val root = (project in file("."))
 lazy val core = mkModule("core")
   .settings(
     libraryDependencies ++= List(
-      // TODO: replace Calvin's version with the canonical one once its released
-      "com.github.kaizen-solutions.trace4cats-newrelic" %% "trace4cats-newrelic-http-exporter" % "0.12.2",
+      "io.janstenpickle" %% "trace4cats-newrelic-http-exporter" % "0.13.1",
       "org.http4s" %% "http4s-async-http-client" % "0.23.10",
     )
   )
@@ -49,10 +48,10 @@ lazy val testkit = mkModule("testkit")
   .dependsOn(core, sttp, zhttp)
 
 def zio(name: String) =
-  "dev.zio" %% name % "1.0.13"
+  "dev.zio" %% name % "1.0.15"
 
 def trace4cats(name: String) =
-  "io.janstenpickle" %% s"trace4cats-$name" % "0.12.0"
+  "io.janstenpickle" %% s"trace4cats-$name" % "0.13.1"
 
 def mkModule(id: String) = {
   val projectName = s"trace4cats-zio-extras-$id"
