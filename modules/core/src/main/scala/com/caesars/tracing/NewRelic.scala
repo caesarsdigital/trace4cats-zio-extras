@@ -12,44 +12,56 @@ import zio.*
 import zio.interop.catz.*
 
 object NewRelic {
-  case class CompleterConfig(traceProcess: TraceProcess, apiKey: String, endpoint: Endpoint)
+  case class LoggingConfig(level: LogLevel, targets: List[String]) {
+    def hasTarget(name: String) = targets.exists(_.equalsIgnoreCase(name))
+  }
+  case class CompleterConfig(traceProcess: TraceProcess, apiKey: String, endpoint: Endpoint, logSettings: Option[LoggingConfig])
 
   val SpanCompleterLayer: URLayer[CompleterConfig, SpanCompleter[Task]] = {
-    val client: ULayer[Client[Task]] =
-      // Blaze client does not support proxy, se we use Async client implementation (same underlying impl as Sttp)
-      ZLayer.scoped(
-        AsyncHttpClient
-          .resource[Task] {
-            // Using the default configs disrupts setting the proxy, so...
-            // use the AHC defaults https://github.com/AsyncHttpClient/async-http-client/blob/master/client/src/main/resources/org/asynchttpclient/config/ahc-default.properties
-            // these are overridable using system properties if need be
-            new DefaultAsyncHttpClientConfig.Builder().setUseProxySelector(true).build()
-          }
-          .map(
-            Logger(
-              logHeaders = true,
-              logBody = false,
-              redactHeadersWhen = _.compareTo(CIString("Api-Key")) == 0,
-              logAction = Some(s => ZIO.logInfo(s))
-            )
-          )
-          .toScopedZIO
-          .orDie
-      )
+    def log(level: LogLevel)(msg: String): UIO[Unit] =
+      level match {
+        case LogLevel.Fatal => ZIO.logFatal(msg)
+        case LogLevel.Error => ZIO.logError(msg)
+        case LogLevel.Warning => ZIO.logWarning(msg)
+        case LogLevel.Info => ZIO.logInfo(msg)
+        case LogLevel.All => ZIO.log(msg)
+        case LogLevel.Debug => ZIO.logDebug(msg)
+        case LogLevel.Trace => ZIO.logTrace(msg)
+        case _ => ZIO.unit
+      }
 
-    ZLayer.service[CompleterConfig] ++ client >>>
-      ZLayer.scoped {
-        for {
-          client <- ZIO.service[Client[Task]]
-          config <- ZIO.service[CompleterConfig]
-          result <- NewRelicSpanCompleter[Task](
-            client = client,
-            process = config.traceProcess,
-            apiKey = config.apiKey,
-            endpoint = config.endpoint
-          ).toScopedZIO
-        } yield result
-      }.orDie
+    def client(cfg: CompleterConfig): URIO[Scope, Client[Task]] =
+      // Blaze client does not support proxy, se we use Async client implementation (same underlying impl as Sttp)
+      AsyncHttpClient
+        .resource[Task] {
+          // Using the default configs disrupts setting the proxy, so...
+          // use the AHC defaults https://github.com/AsyncHttpClient/async-http-client/blob/master/client/src/main/resources/org/asynchttpclient/config/ahc-default.properties
+          // these are overridable using system properties if need be
+          new DefaultAsyncHttpClientConfig.Builder().setUseProxySelector(true).build()
+        }
+        .map(
+          Logger(
+            logHeaders = cfg.logSettings.exists(_.hasTarget("headers")),
+            logBody = cfg.logSettings.exists(_.hasTarget("body")),
+            redactHeadersWhen = _.compareTo(CIString("Api-Key")) == 0,
+            logAction = cfg.logSettings.map(x => log(x.level))
+          )
+        )
+        .toScopedZIO
+        .orDie
+
+    ZLayer.scoped {
+      for {
+        config <- ZIO.service[CompleterConfig]
+        client <- client(config)
+        result <- NewRelicSpanCompleter[Task](
+          client = client,
+          process = config.traceProcess,
+          apiKey = config.apiKey,
+          endpoint = config.endpoint
+        ).toScopedZIO
+      } yield result
+    }.orDie
   }
 
   val ZEntryPointLayer: URLayer[CompleterConfig, ZEntryPoint] = {

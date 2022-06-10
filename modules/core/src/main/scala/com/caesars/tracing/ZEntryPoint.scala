@@ -1,6 +1,6 @@
 package com.caesars.tracing
 
-import io.janstenpickle.trace4cats.{ErrorHandler, Span}
+import io.janstenpickle.trace4cats.ErrorHandler
 import io.janstenpickle.trace4cats.inject.{EntryPoint, SpanName}
 import io.janstenpickle.trace4cats.kernel.{SpanCompleter, SpanSampler}
 import io.janstenpickle.trace4cats.model.*
@@ -8,7 +8,7 @@ import io.janstenpickle.trace4cats.model.*
 import zio.*
 import zio.interop.catz.*
 
-/* NOTE that this should be an opaque type, i.e. -
+/* NOTE that this should be an opaque type in scala 3, i.e. -
       opaque type ZEntryPoint = EntryPoint[Task]
   ...but but ZIO chokes and moans about not finding a Tag
   https://github.com/zio/zio/issues/6829
@@ -54,7 +54,7 @@ class ZEntryPoint(private val underlying: EntryPoint[Task]) extends AnyVal {
       .orDie
       .map(ZSpan(_))
 }
-object ZEntryPoint:
+object ZEntryPoint {
   val make: URIO[SpanSampler[Task] & SpanCompleter[Task], ZEntryPoint] =
     for {
       sampler   <- ZIO.service[SpanSampler[Task]]
@@ -100,4 +100,4 @@ object ZEntryPoint:
       _.continueOrElseRootSpan(name, kind, headers, errorHandler)
     }
 
-end ZEntryPoint
+}
