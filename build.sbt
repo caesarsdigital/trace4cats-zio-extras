@@ -48,7 +48,7 @@ lazy val testkit = mkModule("testkit")
   .dependsOn(core, sttp, zhttp)
 
 def zio(name: String) =
-  "dev.zio" %% name % "1.0.14"
+  "dev.zio" %% name % "1.0.15"
 
 def trace4cats(name: String) =
   "io.janstenpickle" %% s"trace4cats-$name" % "0.13.1"
