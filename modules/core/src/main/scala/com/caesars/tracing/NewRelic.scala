@@ -1,5 +1,6 @@
 package com.caesars.tracing
 
+import com.caesars.tracing.newrelic.LogTarget
 import io.janstenpickle.trace4cats.kernel.{SpanCompleter, SpanSampler}
 import io.janstenpickle.trace4cats.model.TraceProcess
 import io.janstenpickle.trace4cats.newrelic.{Endpoint, NewRelicSpanCompleter}
@@ -12,8 +13,8 @@ import zio.*
 import zio.interop.catz.*
 
 object NewRelic {
-  case class LoggingConfig(level: LogLevel, targets: List[String]) {
-    def hasTarget(name: String) = targets.exists(_.equalsIgnoreCase(name))
+  case class LoggingConfig(level: LogLevel, targets: List[LogTarget]) {
+    def hasTarget(target: LogTarget) = targets.exists(_ == target)
   }
   case class CompleterConfig(traceProcess: TraceProcess, apiKey: String, endpoint: Endpoint, logSettings: Option[LoggingConfig])
 
@@ -41,8 +42,8 @@ object NewRelic {
         }
         .map(
           Logger(
-            logHeaders = cfg.logSettings.exists(_.hasTarget("headers")),
-            logBody = cfg.logSettings.exists(_.hasTarget("body")),
+            logHeaders = cfg.logSettings.exists(_.hasTarget(LogTarget.Headers)),
+            logBody = cfg.logSettings.exists(_.hasTarget(LogTarget.Body)),
             redactHeadersWhen = _.compareTo(CIString("Api-Key")) == 0,
             logAction = cfg.logSettings.map(x => log(x.level))
           )
