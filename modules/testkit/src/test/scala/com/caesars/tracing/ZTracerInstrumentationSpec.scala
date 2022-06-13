@@ -21,7 +21,7 @@ object SttpClientInstrumentationSpec extends ZIOSpecDefault {
       ZLayer.succeed(TracingTestUtils.sampler),
       TracingTestUtils.spanRecorderLayer,
       TracingTestUtils.completer,
-      EntryPointLayer,
+      ZEntryPoint.layer,
       ZTracer.layer,
     )
 
@@ -77,7 +77,7 @@ object ZioHttpInstrumentationSpec extends ZIOSpecDefault {
       ZLayer.succeed(TracingTestUtils.sampler),
       TracingTestUtils.spanRecorderLayer,
       TracingTestUtils.completer,
-      EntryPointLayer,
+      ZEntryPoint.layer,
       ZTracer.layer,
     )
 
@@ -133,7 +133,7 @@ object ZTracerInstrumentationSpec extends ZIOSpecDefault {
       ZLayer.succeed(TracingTestUtils.sampler),
       TracingTestUtils.spanRecorderLayer,
       TracingTestUtils.completer,
-      EntryPointLayer,
+      ZEntryPoint.layer,
       ZTracer.layer,
       tracedBackend,
       EventLoopGroup.auto(),
