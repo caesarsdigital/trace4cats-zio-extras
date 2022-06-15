@@ -1,17 +1,12 @@
 package com.caesars.tracing
 
-import io.janstenpickle.trace4cats.ToHeaders
 import io.janstenpickle.trace4cats.`export`.RefSpanCompleter
 import io.janstenpickle.trace4cats.inject.EntryPoint
-import io.janstenpickle.trace4cats.kernel.{SpanCompleter, SpanSampler}
-import io.janstenpickle.trace4cats.model.{CompletedSpan, SpanKind, TraceHeaders, TraceProcess}
-import zhttp.http.*
-import zhttp.service.Server
-import zio.blocking.Blocking
-import zio.clock.Clock
+import io.janstenpickle.trace4cats.kernel.SpanSampler
+import io.janstenpickle.trace4cats.model.{CompletedSpan, SpanKind, TraceHeaders}
 import zio.interop.catz.*
 import zio.interop.catz.implicits.rts
-import zio.{Has, Queue, Task, UIO, ULayer, URLayer, ZIO, ZLayer}
+import zio.{Has, Task, UIO, ULayer, ZIO, ZLayer}
 
 object TracingTestUtils {
 

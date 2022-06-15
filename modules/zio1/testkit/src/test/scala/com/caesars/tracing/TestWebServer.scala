@@ -6,8 +6,6 @@ import io.janstenpickle.trace4cats.kernel.{SpanCompleter, SpanSampler}
 import io.janstenpickle.trace4cats.model.{CompletedSpan, TraceProcess}
 import sttp.client3.asynchttpclient.zio.AsyncHttpClientZioBackend
 import sttp.client3.asynchttpclient.zio.SttpClient.Service as ZIOSttpClient
-import sttp.tapir.server.ziohttp.ZioHttpInterpreter
-import sttp.tapir.ztapir.*
 import zhttp.http.*
 import zhttp.service.server.ServerChannelFactory
 import zhttp.service.{EventLoopGroup, Server}

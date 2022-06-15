@@ -1,25 +1,16 @@
 package com.caesars.tracing
 
-import scala.compiletime.ops.any
-import scala.io.Source
-
-import com.caesars.tracing.Assertion.*
-import com.caesars.tracing.TracedBackend.TracedBackendConfig
-import com.caesars.tracing.TracingUtils.entryPointLayer
-import io.janstenpickle.trace4cats.kernel.SpanCompleter
-import io.janstenpickle.trace4cats.model.{CompletedSpan, Parent, SpanKind, SpanStatus}
-import io.janstenpickle.trace4cats.{Span, ToHeaders}
+import com.caesars.tracing.Assertions.*
+import io.janstenpickle.trace4cats.model.{CompletedSpan, SpanKind, SpanStatus}
+import io.janstenpickle.trace4cats.ToHeaders
 import org.typelevel.ci.CIString
-import sttp.client3.asynchttpclient.zio.AsyncHttpClientZioBackend
 import sttp.client3.asynchttpclient.zio.SttpClient.Service as ZIOSttpClient
 import sttp.client3.{Response, UriContext, basicRequest}
-import sttp.model.{Header, StatusCode}
-import zhttp.service.EventLoopGroup
-import zhttp.service.server.ServerChannelFactory
+import sttp.model.Header
 import zio.*
 import zio.test.Assertion.*
 import zio.test.TestAspect.*
-import zio.test.{DefaultRunnableSpec, ZSpec, assert, assertM, assertTrue}
+import zio.test.{DefaultRunnableSpec, ZSpec, assertM}
 
 import TracingAssertion.*
 import TestWebServer.*
@@ -133,7 +124,7 @@ object ZTracerInstrumentationSpec extends DefaultRunnableSpec {
       .environment[TestEnvironment]
       .flatMap(env => env.get[CompletedSpanQueue].ref.getAndUpdate(_.empty))
 
-  def tracedClientEnv[A <: Has[_]: Tag](
+  def tracedClientEnv[A <: Has[?]: Tag](
       layer: ULayer[A] = ZLayer.succeed(()),
   ): ULayer[TestEnvironment] = {
     val client: ULayer[Has[ZIOSttpClient]] = mkClient ++ layer
@@ -142,7 +133,7 @@ object ZTracerInstrumentationSpec extends DefaultRunnableSpec {
     CompletedSpanQueue.mk >+> tracedClient >+> randomPort >+> mkServer
   }
 
-  def tracedServerEnv[A <: Has[_]: Tag](
+  def tracedServerEnv[A <: Has[?]: Tag](
       layer: ULayer[A] = ZLayer.succeed(()),
   ): ULayer[TestEnvironment] = {
     val client: ULayer[Has[ZIOSttpClient]] = mkClient ++ layer

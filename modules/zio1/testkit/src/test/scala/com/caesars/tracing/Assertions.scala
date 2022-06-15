@@ -2,19 +2,21 @@ package com.caesars.tracing
 
 import io.janstenpickle.trace4cats.model.{CompletedSpan, SpanKind, SpanStatus}
 import sttp.client3.Response
-import sttp.model.StatusCode
 import zio.test.Assertion.*
 import zio.test.AssertionM.Render.*
-import zio.test.{AssertResult, Assertion, TestResult, assertTrue}
+import zio.test.{AssertResult, Assertion}
+import scala.reflect.ClassTag
+import scala.util.Success
+import scala.util.Failure
 
-object Assertion {
+object Assertions {
 
-  def hasLength[A](n: Int): Assertion[List[A]] =
+  def hasLength(n: Int): Assertion[List[?]] =
     hasSize(equalTo(n))
 
   def hasLast[A](assertion0: Assertion[A]) =
-    assertion[List[A]]("hasLast")(param(assertion0)) { values =>
-      values.lastOption.map(assertion0(_)).getOrElse(nothing(())).isSuccess
+    assertionDirect[List[A]]("hasLast")(param(assertion0)) { values =>
+      values.lastOption.map(assertion0(_)).getOrElse(nothing(()))
     }
 
   def fromFunction[A](name: String)(
@@ -37,13 +39,13 @@ object Assertion {
     def apply[B](name: String, f: A => B)(
         assertion0: Assertion[List[B]],
     ): Assertion[List[A]] =
-      assertion(name)(param(assertion0))(value => assertion0(value.map(f)).isSuccess)
+      assertionDirect(name)(param(assertion0))(value => assertion0(value.map(f)))
   }
 
   implicit class ZipAssertion[A](self: zio.test.Assertion[A]) {
     def zip[B](that: Assertion[B]): Assertion[(A, B)] =
-      assertion[(A, B)]("zip")(param((self, that))) { (l, r) =>
-        (self(l) && that(r)).isSuccess
+      assertionDirect[(A, B)]("zip")(param((self, that))) { case (l, r) =>
+        (self(l) && that(r))
       }
 
     def <*>[B](that: Assertion[B]): Assertion[(A, B)] =
@@ -57,16 +59,29 @@ object TracingAssertion {
       key: String,
       value: String,
   ): Assertion[Response[Either[String, String]]] =
-    hasField("header", _.request.header(key), equalTo(Some(value)))
+    hasField("header", _.request.header(key), isSome(equalTo(value)))
 
-  def hasAttribute[A](key: String, value: A): Assertion[CompletedSpan] =
+  // sealed trait AttributeLookup[-A]
+  // object AttributeLookup {
+  //   case class Found[A](value: A)                            extends AttributeLookup[A]
+  //   case class NotFound(name: String)                        extends AttributeLookup[Any]
+  //   case class TypeMismatch(name: String, typeFoung: String) extends AttributeLookup[Nothing]
+  // }
+  // import AttributeLookup.*
+
+  def hasAttribute[A: ClassTag](key: String, value: A): Assertion[CompletedSpan] =
     hasField(
       key,
-      _.attributes.get(key).map(_.value.value),
-      equalTo(Some(value)),
+      _.attributes.get(key).map(_.value.value) match {
+        case Some(v: A) => Success(v)
+        case None       => Failure(new RuntimeException("Attribute not found: " + key))
+        case _          => Failure(new RuntimeException(s"Attribute type mismatch for [$key]: ${value.getClass}"))
+      },
+      isSuccess(equalTo(value)),
     )
 
-  def hasStatusCode(code: Int) = hasAttribute("status.code", code)
+  def hasStatusCode(code: Long) =
+    hasAttribute("status.code", code)
 
   def hasKind(kind: SpanKind): Assertion[CompletedSpan] =
     hasField("kind", _.kind, equalTo(kind))
@@ -81,7 +96,7 @@ object TracingAssertion {
     hasField("status", _.status, equalTo(status))
 
   def hasHostname(value: String): Assertion[CompletedSpan] =
-    hasAttribute("remote.service.hostname", "localhost")
+    hasAttribute("remote.service.hostname", value)
 
   def isOk: Assertion[Response[Either[String, String]]] =
     hasField("code", _.code.isSuccess, isTrue)
