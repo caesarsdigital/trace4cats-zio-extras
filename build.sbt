@@ -13,26 +13,24 @@ ThisBuild / version ~= (v => sys.env.getOrElse("SBT_VERSION_OVERRIDE", v))
 addCommandAlias("lint", "; scalafmtSbt; scalafmtAll")
 
 lazy val root = (project in file("."))
-  .settings(name := "root")
-  .aggregate(zio1)
+  .settings(name := "trace4cats-zio-extras")
+  .aggregate(
+    coreZIO1, sttpZIO1, zhttpZIO1, testKitZIO1,
+    coreZIO2, sttpZIO2, zhttpZIO2, testKitZIO2,
+  )
 
-lazy val zio1 = mkZIOModule("zio1")
-  .aggregate(coreZIO1, sttpZIO1, zhttpZIO1, testKitZIO1)
+lazy val coreZIO1 = mkCore(ZioAlias.zio1)
+lazy val sttpZIO1 = mkSttp(ZioAlias.zio1).dependsOn(coreZIO1)
+lazy val zhttpZIO1 = mkZhttp(ZioAlias.zio1).dependsOn(coreZIO1)
+lazy val testKitZIO1 = mkTestKit(ZioAlias.zio1).dependsOn(coreZIO1, sttpZIO1, zhttpZIO1)
 
-lazy val coreZIO1 = mkCore("zio1", "1.0.15")
-lazy val sttpZIO1 = mkSttp("zio1", "1.0.15").dependsOn(coreZIO1)
-lazy val zhttpZIO1 = mkZhttp("zio1", "1.0.15").dependsOn(coreZIO1)
-lazy val testKitZIO1 =
-  mkTestKit("zio1", "1.0.15").dependsOn(coreZIO1, sttpZIO1, zhttpZIO1)
+lazy val coreZIO2 = mkCore(ZioAlias.zio2)
+lazy val sttpZIO2 = mkSttp(ZioAlias.zio2).dependsOn(coreZIO2)
+lazy val zhttpZIO2 = mkZhttp(ZioAlias.zio2).dependsOn(coreZIO2)
+lazy val testKitZIO2 = mkTestKit(ZioAlias.zio2).dependsOn(coreZIO2, sttpZIO2, zhttpZIO2)
 
-def mkZIOModule(zioAlias: String): Project =
-  Project(zioAlias, file(s"./modules/$zioAlias"))
-    .settings(
-      name := s"trace4cats-$zioAlias-extras"
-    )
-
-def mkCore(zioAlias: String, zioVersion: String): Project =
-  mkModule(zioAlias, zioVersion)("core")
+def mkCore(zioAlias: ZioAlias): Project =
+  mkModule(zioAlias)("core")
     .settings(
       libraryDependencies ++= List(
         trace4cats("newrelic-http-exporter"),
@@ -40,25 +38,26 @@ def mkCore(zioAlias: String, zioVersion: String): Project =
       )
     )
 
-def mkSttp(zioAlias: String, zioVersion: String): Project =
-  mkModule(zioAlias, zioVersion)("sttp")
+/* excludeAll(ExclusionRule("org.scala-lang.modules")) because:
+    [error] Modules were resolved with conflicting cross-version suffixes in ProjectRef(uri("file:/Users/anakos/projects/pam/trace4cats-zio-extras/"), "trace4cats-zio2-extras-sttp"):
+    [error]    org.scala-lang.modules:scala-collection-compat _3, _2.13
+ */
+def mkSttp(zioAlias: ZioAlias): Project =
+  mkModule(zioAlias)("sttp")
     .settings(
       libraryDependencies ++= List(
-        "com.softwaremill.sttp.client3" %% s"async-http-client-backend-$zioAlias" % "3.6.1",
+        zioAlias.sttp,
         trace4cats("sttp-client3")
       )
+      .map { _.excludeAll(ExclusionRule("org.scala-lang.modules")) }
     )
 
-def mkZhttp(zioAlias: String, zioVersion: String): Project =
-  mkModule(zioAlias, zioVersion)("zhttp")
-    .settings(
-      libraryDependencies ++= List(
-        "com.softwaremill.sttp.tapir" %% s"tapir-$zioAlias-http-server" % "0.20.1"
-      )
-    )
+def mkZhttp(zioAlias: ZioAlias): Project =
+  mkModule(zioAlias)("zhttp")
+    .settings( libraryDependencies += zioAlias.tapir)
 
-def mkTestKit(zioAlias: String, zioVersion: String): Project =
-  mkModule(zioAlias, zioVersion)("testkit")
+def mkTestKit(zioAlias: ZioAlias): Project =
+  mkModule(zioAlias)("testkit")
 
 def trace4cats(name: String) =
   "io.janstenpickle" %% s"trace4cats-$name" % "0.13.1"
@@ -66,9 +65,9 @@ def trace4cats(name: String) =
 def zio(name: String, zioVersion: String) =
   "dev.zio" %% name % zioVersion
 
-def mkModule(zioAlias: String, zioVersion: String)(id: String) = {
+def mkModule(zioAlias: ZioAlias)(id: String) = {
   val projectName = s"trace4cats-$zioAlias-extras-$id"
-  Project(projectName, file("modules") / zioAlias / id)
+  Project(projectName, file("modules") / zioAlias.toString() / id)
     .settings(
       name := projectName,
       Compile / console / scalacOptions ~= (_.filterNot(
@@ -99,10 +98,10 @@ def mkModule(zioAlias: String, zioVersion: String)(id: String) = {
       libraryDependencies ++= Seq(
         trace4cats("base-zio"),
         trace4cats("inject-zio"),
-        "dev.zio" %% "zio-interop-cats" % "3.2.9.1",
-        zio("zio", zioVersion),
-        zio("zio-test", zioVersion) % Test,
-        zio("zio-test-sbt", zioVersion) % Test
+        zioAlias.interop,
+        zio("zio", zioAlias.verzion),
+        zio("zio-test", zioAlias.verzion) % Test,
+        zio("zio-test-sbt", zioAlias.verzion) % Test
       ),
       libraryDependencies ++= {
         if (CrossVersion.partialVersion(scalaVersion.value).exists(_._1 == 2))
