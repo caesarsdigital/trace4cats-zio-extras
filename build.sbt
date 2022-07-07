@@ -24,7 +24,7 @@ lazy val core = mkModule("core")
     libraryDependencies ++= List(
       // TODO: replace Calvin's version with the canonical one once its released
       "com.github.kaizen-solutions.trace4cats-newrelic" %% "trace4cats-newrelic-http-exporter" % "0.12.2",
-      "org.http4s" %% "http4s-async-http-client" % "0.23.11",
+      "org.http4s" %% "http4s-async-http-client" % "0.23.10",
     )
   )
 
