@@ -1,12 +1,11 @@
 import sbt._
 
 val scala2 = "2.13.8"
-
-// val scala3 = "3.1.0"
+val scala3 = "3.1.2"
 
 ThisBuild / organization := "com.caesars"
-ThisBuild / scalaVersion := scala2
-// ThisBuild / crossScalaVersions := List(scala2, scala3)
+ThisBuild / scalaVersion := scala3
+ThisBuild / crossScalaVersions := List(scala3, scala2)
 ThisBuild / versionScheme := Some("early-semver")
 // usually, this is set by sbt-dynver. For some cases, like an out-of-bound docker image, allow override
 ThisBuild / version ~= (v => sys.env.getOrElse("SBT_VERSION_OVERRIDE", v))
@@ -14,52 +13,66 @@ ThisBuild / version ~= (v => sys.env.getOrElse("SBT_VERSION_OVERRIDE", v))
 addCommandAlias("lint", "; scalafmtSbt; scalafmtAll")
 
 lazy val root = (project in file("."))
-  .settings(
-    name := "trace4cats-zio-extras",
+  .settings(name := "trace4cats-zio-extras")
+  .aggregate(
+    coreZIO1, sttpZIO1, zhttpZIO1, testKitZIO1,
+    coreZIO2, sttpZIO2, zhttpZIO2, testKitZIO2,
   )
-  .aggregate(core, sttp, zhttp, testkit)
 
-lazy val core = mkModule("core")
-  .settings(
-    libraryDependencies ++= List(
-      // TODO: replace Calvin's version with the canonical one once its released
-      "com.github.kaizen-solutions.trace4cats-newrelic" %% "trace4cats-newrelic-http-exporter" % "0.12.2",
-      "org.http4s" %% "http4s-async-http-client" % "0.23.10",
+lazy val coreZIO1 = mkCore(ZioAlias.zio1)
+lazy val sttpZIO1 = mkSttp(ZioAlias.zio1).dependsOn(coreZIO1)
+lazy val zhttpZIO1 = mkZhttp(ZioAlias.zio1).dependsOn(coreZIO1)
+lazy val testKitZIO1 = mkTestKit(ZioAlias.zio1).dependsOn(coreZIO1, sttpZIO1, zhttpZIO1)
+
+lazy val coreZIO2 = mkCore(ZioAlias.zio2)
+lazy val sttpZIO2 = mkSttp(ZioAlias.zio2).dependsOn(coreZIO2)
+lazy val zhttpZIO2 = mkZhttp(ZioAlias.zio2).dependsOn(coreZIO2)
+lazy val testKitZIO2 = mkTestKit(ZioAlias.zio2).dependsOn(coreZIO2, sttpZIO2, zhttpZIO2)
+
+def mkCore(zioAlias: ZioAlias): Project =
+  mkModule(zioAlias)("core")
+    .settings(
+      libraryDependencies ++= List(
+        trace4cats("newrelic-http-exporter"),
+        "org.http4s" %% "http4s-async-http-client" % "0.23.10"
+      )
     )
-  )
 
-lazy val sttp = mkModule("sttp")
-  .settings(
-    libraryDependencies ++= List(
-      "com.softwaremill.sttp.client3" %% "async-http-client-backend-zio1" % "3.5.0",
-      trace4cats("sttp-client3"),
+/* excludeAll(ExclusionRule("org.scala-lang.modules")) because:
+    [error] Modules were resolved with conflicting cross-version suffixes in ProjectRef(uri("file:/Users/anakos/projects/pam/trace4cats-zio-extras/"), "trace4cats-zio2-extras-sttp"):
+    [error]    org.scala-lang.modules:scala-collection-compat _3, _2.13
+ */
+def mkSttp(zioAlias: ZioAlias): Project =
+  mkModule(zioAlias)("sttp")
+    .settings(
+      libraryDependencies ++= List(
+        zioAlias.sttp,
+        trace4cats("sttp-client3")
+      )
+      .map { _.excludeAll(ExclusionRule("org.scala-lang.modules")) }
     )
-  )
-  .dependsOn(core)
 
-lazy val zhttp = mkModule("zhttp")
-  .settings(
-    libraryDependencies ++= List(
-      "com.softwaremill.sttp.tapir" %% "tapir-zio1-http-server" % "0.20.1",
-    )
-  )
-  .dependsOn(core)
+def mkZhttp(zioAlias: ZioAlias): Project =
+  mkModule(zioAlias)("zhttp")
+    .settings( libraryDependencies += zioAlias.tapir)
 
-lazy val testkit = mkModule("testkit")
-  .dependsOn(core, sttp, zhttp)
-
-def zio(name: String) =
-  "dev.zio" %% name % "1.0.13"
+def mkTestKit(zioAlias: ZioAlias): Project =
+  mkModule(zioAlias)("testkit")
 
 def trace4cats(name: String) =
-  "io.janstenpickle" %% s"trace4cats-$name" % "0.12.0"
+  "io.janstenpickle" %% s"trace4cats-$name" % "0.13.1"
 
-def mkModule(id: String) = {
-  val projectName = s"trace4cats-zio-extras-$id"
-  Project(projectName, file("modules") / id)
+def zio(name: String, zioVersion: String) =
+  "dev.zio" %% name % zioVersion
+
+def mkModule(zioAlias: ZioAlias)(id: String) = {
+  val projectName = s"trace4cats-$zioAlias-extras-$id"
+  Project(projectName, file("modules") / zioAlias.toString() / id)
     .settings(
       name := projectName,
-      Compile / console / scalacOptions ~= (_.filterNot(Set("-Xfatal-warnings"))),
+      Compile / console / scalacOptions ~= (_.filterNot(
+        Set("-Xfatal-warnings")
+      )),
       Test / fork := true,
       Test / testForkedParallel := true,
       Test / parallelExecution := true,
@@ -73,12 +86,11 @@ def mkModule(id: String) = {
               "-Wunused:_,-implicits",
               // helps with unused implicits warning
               "-Ywarn-macros:after",
-              "-Xsource:3",
               "-P:kind-projector:underscore-placeholders",
               "-Xsource:3"
             )
           case _ =>
-            List("-Ykind-projector:underscores")
+            Nil
         }
         "-language:postfixOps" :: opts
       },
@@ -86,17 +98,18 @@ def mkModule(id: String) = {
       libraryDependencies ++= Seq(
         trace4cats("base-zio"),
         trace4cats("inject-zio"),
-        "dev.zio" %% "zio-interop-cats" % "3.2.9.1",
-        zio("zio"),
-        zio("zio-test") % Test,
-        zio("zio-test-sbt") % Test,
-        "io.github.kitlangton" %% "zio-magic" % "0.3.11" % Test,
+        zioAlias.interop,
+        zio("zio", zioAlias.verzion),
+        zio("zio-test", zioAlias.verzion) % Test,
+        zio("zio-test-sbt", zioAlias.verzion) % Test
       ),
       libraryDependencies ++= {
         if (CrossVersion.partialVersion(scalaVersion.value).exists(_._1 == 2))
           List(
-            compilerPlugin("org.typelevel" % "kind-projector" % "0.13.2" cross CrossVersion.full),
-            compilerPlugin("com.olegpy" %% "better-monadic-for" % "0.3.1"),
+            compilerPlugin(
+              "org.typelevel" % "kind-projector" % "0.13.2" cross CrossVersion.full
+            ),
+            compilerPlugin("com.olegpy" %% "better-monadic-for" % "0.3.1")
           )
         else
           Nil
