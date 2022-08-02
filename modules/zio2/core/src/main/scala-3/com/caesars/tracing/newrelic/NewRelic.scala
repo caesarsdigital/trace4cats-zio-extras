@@ -1,8 +1,8 @@
 package com.caesars.tracing.newrelic
 
-import io.janstenpickle.trace4cats.kernel.{SpanCompleter, SpanSampler}
-import io.janstenpickle.trace4cats.model.TraceProcess
-import io.janstenpickle.trace4cats.newrelic.{Endpoint, NewRelicSpanCompleter}
+import trace4cats.kerneltrace4cats.kernel.{SpanCompleter, SpanSampler}
+import trace4cats.model.TraceProcess
+import trace4cats.newrelictrace4cats.newrelic.{Endpoint, NewRelicSpanCompleter}
 import org.asynchttpclient.DefaultAsyncHttpClientConfig
 import org.http4s.asynchttpclient.client.AsyncHttpClient
 import org.http4s.client.Client

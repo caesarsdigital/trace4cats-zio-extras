@@ -3,9 +3,9 @@ package com.caesars.tracing
 import cats.effect.{Ref as CERef}
 import com.caesars.tracing.sttp.{HttpClient, TracedBackend}
 import com.caesars.tracing.testing.SpanRecorder
-import io.janstenpickle.trace4cats.`export`.RefSpanCompleter
-import io.janstenpickle.trace4cats.kernel.{SpanCompleter, SpanSampler}
-import io.janstenpickle.trace4cats.model.{CompletedSpan, SpanKind, TraceHeaders, TraceProcess}
+import trace4cats.RefSpanCompleter
+import trace4cats.kerneltrace4cats.kernel.{SpanCompleter, SpanSampler}
+import trace4cats.modeltrace4cats.modeltrace4cats.modeltrace4cats.model.{CompletedSpan, SpanKind, TraceHeaders, TraceProcess}
 import scala.collection.immutable.Queue
 import _root_.sttp.client3.{Identity, RequestT, UriContext, basicRequest, Request as SttpRequest, Response as SttpResponse}
 import _root_.sttp.client3.impl.zio.RIOMonadAsyncError

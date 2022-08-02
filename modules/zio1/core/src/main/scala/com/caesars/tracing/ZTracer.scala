@@ -1,9 +1,9 @@
 package com.caesars.tracing
 
 import cats.data.NonEmptyList
-import io.janstenpickle.trace4cats.inject.EntryPoint
-import io.janstenpickle.trace4cats.model.*
-import io.janstenpickle.trace4cats.{ErrorHandler, Span}
+import trace4cats.EntryPoint
+import trace4cats.model.*
+import trace4catstrace4cats.{ErrorHandler, Span}
 import zio.*
 import zio.interop.catz.*
 

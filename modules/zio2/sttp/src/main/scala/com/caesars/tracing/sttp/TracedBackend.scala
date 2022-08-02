@@ -1,9 +1,9 @@
 package com.caesars.tracing
 package sttp
 
-import io.janstenpickle.trace4cats.{ErrorHandler, ToHeaders}
-import io.janstenpickle.trace4cats.model.{SampleDecision, SpanKind}
-import io.janstenpickle.trace4cats.sttp.client3.{SttpRequest, SttpSpanNamer}
+import trace4catstrace4cats.{ErrorHandler, ToHeaders}
+import trace4cats.modeltrace4cats.model.{SampleDecision, SpanKind}
+import trace4cats.sttp.client3trace4cats.sttp.client3.{SttpRequest, SttpSpanNamer}
 import io.janstenpickle.trace4cats.sttp.common.{SttpHeaders, SttpStatusMapping}
 import _root_.sttp.capabilities.Effect
 import _root_.sttp.client3.impl.zio.RIOMonadAsyncError

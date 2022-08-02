@@ -1,9 +1,9 @@
 package com.caesars.tracing
 
-import io.janstenpickle.trace4cats.`export`.RefSpanCompleter
-import io.janstenpickle.trace4cats.inject.EntryPoint
-import io.janstenpickle.trace4cats.kernel.SpanSampler
-import io.janstenpickle.trace4cats.model.{CompletedSpan, SpanKind, TraceHeaders}
+import trace4cats.RefSpanCompleter
+import trace4cats.EntryPoint
+import trace4cats.kernel.SpanSampler
+import trace4cats.modeltrace4cats.modeltrace4cats.model.{CompletedSpan, SpanKind, TraceHeaders}
 import zio.interop.catz.*
 import zio.interop.catz.implicits.rts
 import zio.{Has, Task, UIO, ULayer, ZIO, ZLayer}

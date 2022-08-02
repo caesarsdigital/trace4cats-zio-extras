@@ -2,8 +2,8 @@ package com.caesars.tracing
 
 import com.caesars.tracing.sttp.{HttpClient, TracedBackend}
 import com.caesars.tracing.testing.*
-import io.janstenpickle.trace4cats.ToHeaders
-import io.janstenpickle.trace4cats.model.{SpanKind, SpanStatus}
+import trace4cats.ToHeaders
+import trace4cats.modeltrace4cats.model.{SpanKind, SpanStatus}
 import io.netty.channel.{EventLoopGroup as NEventLoopGroup}
 import org.typelevel.ci.CIString
 import _root_.sttp.client3.asynchttpclient.zio.AsyncHttpClientZioBackend

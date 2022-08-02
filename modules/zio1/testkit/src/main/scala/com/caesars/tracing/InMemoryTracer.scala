@@ -1,6 +1,6 @@
 package com.caesars.tracing
 
-import io.janstenpickle.trace4cats.inject.EntryPoint
+import trace4cats.EntryPoint
 import zio.interop.catz.concurrentInstance
 import zio.{Has, Task, ULayer, ZLayer}
 
