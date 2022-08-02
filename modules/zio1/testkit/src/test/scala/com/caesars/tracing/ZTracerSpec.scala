@@ -1,9 +1,9 @@
 package com.caesars.tracing
 
 import com.caesars.tracing.testing.*
-import io.janstenpickle.trace4cats.`export`.RefSpanCompleter
-import io.janstenpickle.trace4cats.model.AttributeValue.StringValue
-import io.janstenpickle.trace4cats.model.{SpanContext, SpanKind, SpanStatus}
+import trace4cats.RefSpanCompleter
+import trace4cats.model.AttributeValue.StringValue
+import trace4cats.modeltrace4cats.modeltrace4cats.model.{SpanContext, SpanKind, SpanStatus}
 import zio.*
 import zio.test.*
 import zio.test.environment.TestEnvironment

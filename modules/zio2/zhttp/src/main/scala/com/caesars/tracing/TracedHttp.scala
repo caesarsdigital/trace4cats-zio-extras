@@ -1,7 +1,7 @@
 package com.caesars.tracing
 
-import io.janstenpickle.trace4cats.model.AttributeValue.{LongValue, StringValue}
-import io.janstenpickle.trace4cats.model.{AttributeValue, SpanKind, SpanStatus, TraceHeaders}
+import trace4cats.model.AttributeValuetrace4cats.model.AttributeValue.{LongValue, StringValue}
+import trace4cats.modeltrace4cats.modeltrace4cats.modeltrace4cats.model.{AttributeValue, SpanKind, SpanStatus, TraceHeaders}
 import sttp.model.HeaderNames
 import zhttp.http.*
 import zio.*

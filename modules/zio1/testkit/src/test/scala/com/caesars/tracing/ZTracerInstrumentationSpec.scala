@@ -1,8 +1,8 @@
 package com.caesars.tracing
 
 import com.caesars.tracing.Assertions.*
-import io.janstenpickle.trace4cats.model.{CompletedSpan, SpanKind, SpanStatus}
-import io.janstenpickle.trace4cats.ToHeaders
+import trace4cats.modeltrace4cats.modeltrace4cats.model.{CompletedSpan, SpanKind, SpanStatus}
+import trace4cats.ToHeaders
 import org.typelevel.ci.CIString
 import sttp.client3.asynchttpclient.zio.SttpClient.Service as ZIOSttpClient
 import sttp.client3.{Response, UriContext, basicRequest}
