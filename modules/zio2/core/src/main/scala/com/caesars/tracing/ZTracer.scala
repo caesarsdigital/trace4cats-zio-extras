@@ -15,7 +15,7 @@ import zio.*
 //What we would like, is a ZTracer that always has a span, and can perform `context`, `setStatus`, `putAll` and `span` safely
 case class ZTracer private (
     private val currentSpan: FiberRef[Option[ZSpan]],
-    private val entryPoint: ZEntryPoint
+    private val entryPoint: ZEntryPoint,
 ) {
   val context: UIO[SpanContext] =
     currentSpan.get.map(_.fold(SpanContext.invalid)(_.context))
@@ -34,7 +34,7 @@ case class ZTracer private (
   def span[R, E, A](
       name: String,
       kind: SpanKind = SpanKind.Internal,
-      errorHandler: ErrorHandler = ErrorHandler.empty
+      errorHandler: ErrorHandler = ErrorHandler.empty,
   )(f: ZSpan => ZIO[R, E, A]): ZIO[R, E, A] =
     ZIO.scoped[R] {
       currentSpan.get
@@ -52,7 +52,7 @@ case class ZTracer private (
   def fromHeaders[R, E, A](
       headers: TraceHeaders,
       kind: SpanKind = SpanKind.Internal,
-      name: String
+      name: String,
   )(f: ZSpan => ZIO[R, E, A]): ZIO[R, E, A] =
     fromHeaders(headers, kind, name, ErrorHandler.empty)(f)
 
@@ -84,7 +84,7 @@ case class ZTracer private (
       .flatMap(
         ZIO.whenCase(_) { case Some(cs) =>
           cs.putAll(attrs)
-        }
+        },
       )
       .unit
 }
@@ -109,7 +109,7 @@ object ZTracer {
   def span[R, E, A](
       name: String,
       kind: SpanKind = SpanKind.Internal,
-      errorHandler: ErrorHandler = ErrorHandler.empty
+      errorHandler: ErrorHandler = ErrorHandler.empty,
   )(f: ZSpan => ZIO[R, E, A]): ZIO[R & ZTracer, E, A] =
     ZIO.serviceWithZIO[ZTracer] { _.span(name, kind, errorHandler)(f) }
 
@@ -139,7 +139,7 @@ object ZTracer {
   // Constructors
   def make(
       params: SpanParams,
-      entryPoint: ZEntryPoint
+      entryPoint: ZEntryPoint,
   ): URIO[Scope, ZTracer] =
     entryPoint
       .continueOrElseRootSpan(params._1, params._2, params._3, params._4)
@@ -162,6 +162,6 @@ object ZTracer {
   val layer: URLayer[ZEntryPoint, ZTracer] = ZLayer.scoped(
     ZIO
       .service[ZEntryPoint]
-      .flatMap(make(_))
+      .flatMap(make(_)),
   )
 }

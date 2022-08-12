@@ -77,7 +77,7 @@ object TracedHttpUtils {
     val name    = s"$method ${url.path}"
     val traceHeaders =
       TraceHeaders.of(
-        headers.toList.filterNot { case (k, _) => dropHeadersWhen(k) }*,
+        headers.toList.filterNot { case (k, _) => dropHeadersWhen(k) } *,
       )
 
     ztracer.fromHeaders(traceHeaders, SpanKind.Server, name)(
@@ -100,11 +100,11 @@ object TracedHttpUtils {
       SpanStatus.Internal("Internal Server Error")
     case Status.Unauthorized        => SpanStatus.Unauthenticated
     case Status.Forbidden           => SpanStatus.PermissionDenied
-    case Status.NotFound           => SpanStatus.NotFound
-    case Status.TooManyRequests   => SpanStatus.Unavailable
-    case Status.BadGateway         => SpanStatus.Unavailable
-    case Status.ServiceUnavailable => SpanStatus.Unavailable
-    case Status.GatewayTimeout     => SpanStatus.Unavailable
+    case Status.NotFound            => SpanStatus.NotFound
+    case Status.TooManyRequests     => SpanStatus.Unavailable
+    case Status.BadGateway          => SpanStatus.Unavailable
+    case Status.ServiceUnavailable  => SpanStatus.Unavailable
+    case Status.GatewayTimeout      => SpanStatus.Unavailable
     case status if status.isSuccess => SpanStatus.Ok
     case _                          => SpanStatus.Unknown
   }
