@@ -36,7 +36,7 @@ jobs:
       fail-fast: false
       matrix:
         java: ['adopt@1.11']
-        scala: ['2.13.8']
+        scala: ['2.13.9', '3.2.0']
         platform: ['JVM']
     steps:
       - name: Checkout current branch
@@ -59,7 +59,7 @@ jobs:
             ~/Library/Caches/Coursier/v1
           key: ${{ runner.os }}-sbt-cache-v2-${{ hashFiles('**/*.sbt') }}-${{ hashFiles('project/build.properties') }}
       - name: Build and Test
-        run: sbt ++${{ matrix.scala }}! test
+        run: sbt ++${{ matrix.scala }} test
       - name: Coverage Coveralls
         env:
           COVERALLS_REPO_TOKEN: ${{ secrets.GITHUB_TOKEN }}
