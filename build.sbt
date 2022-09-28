@@ -1,7 +1,7 @@
 import sbt._
 
-val scala2 = "2.13.8"
-val scala3 = "3.1.2"
+val scala2 = "2.13.9"
+val scala3 = "3.2.0"
 
 ThisBuild / organization := "com.caesars"
 ThisBuild / scalaVersion := scala3
@@ -16,7 +16,7 @@ lazy val root = (project in file("."))
   .settings(name := "trace4cats-zio-extras")
   .aggregate(
     coreZIO1, sttpZIO1, zhttpZIO1, testKitZIO1,
-    coreZIO2, sttpZIO2, zhttpZIO2, testKitZIO2,
+    coreZIO2, sttpZIO2, zhttpZIO2, testKitZIO2
   )
 
 lazy val coreZIO1 = mkCore(ZioAlias.zio1)
@@ -54,10 +54,20 @@ def mkSttp(zioAlias: ZioAlias): Project =
 
 def mkZhttp(zioAlias: ZioAlias): Project =
   mkModule(zioAlias)("zhttp")
-    .settings( libraryDependencies += zioAlias.tapir)
+    .settings(
+      libraryDependencies ++= Seq(
+        zioAlias.`sttp-core`,
+        zioAlias.zhttp
+      )
+    )
 
 def mkTestKit(zioAlias: ZioAlias): Project =
   mkModule(zioAlias)("testkit")
+    .settings(
+      libraryDependencies ++= Seq(
+        zioAlias.tapir
+      )
+    )
 
 def trace4cats(name: String) =
   "io.janstenpickle" %% s"trace4cats-$name" % "0.13.1"

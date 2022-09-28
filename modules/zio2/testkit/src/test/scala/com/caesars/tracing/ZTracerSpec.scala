@@ -8,6 +8,8 @@ import zio.*
 import zio.interop.catz.*
 import zio.test.*
 
+import scala.annotation.nowarn
+
 object ZTracerSpec extends ZIOSpecDefault {
   import TracingTestUtils.*
   import ZTracerSpecUtils.*
@@ -60,21 +62,24 @@ object ZTracerSpec extends ZIOSpecDefault {
             appNames.asInstanceOf[Set[Any]]
         )
       },
-      test("can create nested spans") {
-        for {
+
+     test("can create nested spans") {
+       @nowarn("msg=a type was inferred to be `Any`") val a =
+         for {
           tracer <- ZIO.service[ZTracer]
           _ <- tracer.span("parent") { span =>
-            ZIO.scoped { span.child("child", SpanKind.Internal) }
+             ZIO.scoped { span.child("child", SpanKind.Internal) }
           }
           completer <- ZIO.service[RefSpanCompleter[Task]]
-          result    <- completer.get
-          parent = result.find(s => s.name == "parent").getOrElse(throw new Exception("boom"))
-          child = result.find(s => s.name == "child").getOrElse(throw new Exception("boom"))
+          result    <- completer.get.orDie
+          parent = result.find(s => s.name == "parent").getOrElse(???)
+          child = result.find(s => s.name == "child").getOrElse(???)
         } yield assertTrue(
           result.length == 2,
           result.map(s => s.name).toSet == Set("parent", "child"),
           child.context.parent.map(_.spanId).contains(parent.context.spanId)
         )
+       a
       }
     )
       .provideLayer(

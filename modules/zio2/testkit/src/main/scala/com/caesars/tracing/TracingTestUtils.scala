@@ -104,7 +104,7 @@ object ZTracerImplementationSpecUtils {
 
     for {
       tracedApp1 <- TracedHttp.layer()(app)
-      _          <- tracedApp1(Request(method = Method.GET, url = URL(path = Path(Vector("foo"), trailingSlash = false)))).orDieWith(_.get)
+      _          <- tracedApp1(Request(url = URL.fromString("/foo").getOrElse(???))).either
       ref        <- ZIO.service[cats.effect.Ref[Task, Queue[CompletedSpan]]]
       spans      <- ref.get
       span = spans.head
@@ -122,7 +122,7 @@ object ZTracerImplementationSpecUtils {
 
     for {
       tracedApp <- TracedHttp.layer()(app.catchAll(recover))
-      _         <- tracedApp(Request(method = Method.GET, url = URL(path = Path(Vector("foo"), trailingSlash = false)))).either
+      _         <- tracedApp(Request(url = URL.fromString("/foo").getOrElse(???))).either
       ref       <- ZIO.service[cats.effect.Ref[Task, Queue[CompletedSpan]]]
       spans     <- ref.get
       span = spans.head
@@ -137,7 +137,7 @@ object ZTracerImplementationSpecUtils {
 
     for {
       tracedApp <- TracedHttp.layer()(app ++ Http.notFound)
-      _         <- tracedApp(Request(method = Method.GET, url = URL(path = Path(Vector("foo"), trailingSlash = false)))).either
+      _         <-tracedApp(Request(url = URL.fromString("/foo").getOrElse(???))).either
       ref       <- ZIO.service[cats.effect.Ref[Task, Queue[CompletedSpan]]]
       spans     <- ref.get
       span = spans.head
@@ -159,7 +159,7 @@ object ZTracerImplementationSpecUtils {
 
     for {
       tracedApp <- TracedHttp.layer()(tapirApp)
-      _         <- tracedApp(Request(method = Method.GET, url = URL(path = Path(Vector("foo"), trailingSlash = false)))).either
+      _         <- tracedApp(Request(url = URL.fromString("/foo").getOrElse(???))).either
       ref       <- ZIO.service[SpanRecorder]
       spans     <- ref.get
       span = spans.head
