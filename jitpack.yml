@@ -1,10 +1,2 @@
 install:
-  - sbt -v "++ 3.1.2" ";project trace4cats-zio1-extras-core;+publishM2"
-  - sbt -v "++ 3.1.2" ";project trace4cats-zio1-extras-sttp;+publishM2"
-  - sbt -v "++ 3.1.2" ";project trace4cats-zio1-extras-testkit;+publishM2"
-  - sbt -v "++ 3.1.2" ";project trace4cats-zio1-extras-zhttp;+publishM2"
-  - sbt -v "++ 3.1.2" ";project trace4cats-zio2-extras-core;+publishM2"
-  - sbt -v "++ 3.1.2" ";project trace4cats-zio2-extras-sttp;+publishM2"
-  - sbt -v "++ 3.1.2" ";project trace4cats-zio2-extras-testkit;+publishM2"
-  - sbt -v "++ 3.1.2" ";project trace4cats-zio2-extras-zhttp;+publishM2"
-  - sbt -v "++ 3.1.2" +publishM2
+  - sbt +publishM2

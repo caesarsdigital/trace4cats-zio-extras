@@ -58,11 +58,14 @@ jobs:
             ~/AppData/Local/Coursier/Cache/v1
             ~/Library/Caches/Coursier/v1
           key: ${{ runner.os }}-sbt-cache-v2-${{ hashFiles('**/*.sbt') }}-${{ hashFiles('project/build.properties') }}
-      - name:  Build, Test and Coverage Coveralls
-        env:
-          COVERALLS_REPO_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          COVERALLS_FLAG_NAME: Scala ${{ matrix.scala }}
-        run: sbt ++${{ matrix.scala }} clean coverage test coverageReport coverageAggregate coveralls
+      - name: Build and Test
+        run: sbt ++${{ matrix.scala }} test
+        # Doesn't work in scala 3
+#      - name: Coverage Coveralls
+#        env:
+#          COVERALLS_REPO_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+#          COVERALLS_FLAG_NAME: Scala ${{ matrix.scala }}
+#        run: sbt ++${{ matrix.scala }} clean coverage test coverageReport coverageAggregate coveralls
   ci:
     runs-on: ubuntu-20.04
     # needs: [lint, mdoc, test]

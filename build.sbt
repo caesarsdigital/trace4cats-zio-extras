@@ -13,7 +13,10 @@ ThisBuild / version ~= (v => sys.env.getOrElse("SBT_VERSION_OVERRIDE", v))
 addCommandAlias("lint", "; scalafmtSbt; scalafmtAll")
 
 lazy val root = (project in file("."))
-  .settings(name := "trace4cats-zio-extras")
+  .settings(
+    name := "trace4cats-zio-extras",
+    publish / skip := true
+  )
   .aggregate(
     coreZIO1, sttpZIO1, zhttpZIO1, testKitZIO1,
     coreZIO2, sttpZIO2, zhttpZIO2, testKitZIO2
