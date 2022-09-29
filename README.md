@@ -1,3 +1,5 @@
+[![](https://jitpack.io/v/caesarsdigital/trace4cats-zio-extras.svg)](https://jitpack.io/#caesarsdigital/trace4cats-zio-extras)
+
 trace4cats-zio-extras
 ---------------------
 
