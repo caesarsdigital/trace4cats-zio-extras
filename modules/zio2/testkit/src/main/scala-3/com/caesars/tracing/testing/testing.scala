@@ -1,6 +1,6 @@
 package com.caesars.tracing.testing
 
-import cats.effect.{Ref as CERef}
+import cats.effect.Ref as CERef
 import io.janstenpickle.trace4cats.model.{AttributeValue, CompletedSpan}
 import scala.collection.immutable.Queue
 import zio.Task

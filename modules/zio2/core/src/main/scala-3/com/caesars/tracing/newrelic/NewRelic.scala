@@ -12,7 +12,7 @@ import zio.*
 import zio.interop.catz.*
 
 enum LogTarget:
-  case Headers, Body
+   case Headers, Body
 
-  def fromString(value: String): Option[LogTarget] =
-    LogTarget.values.find(_.toString().equalsIgnoreCase(value.trim()))
+   def fromString(value: String): Option[LogTarget] =
+     LogTarget.values.find(_.toString().equalsIgnoreCase(value.trim()))
