@@ -14,18 +14,18 @@ import zio.*
 object TracedBackend {
   case class Config(
       spanNamer: SttpSpanNamer = SttpSpanNamer.methodWithPath,
-      toHeaders: ToHeaders = ToHeaders.all,
+      toHeaders: ToHeaders = ToHeaders.all
   )
 
   def apply(
       delegate: HttpClient,
       tracer: ZTracer,
-      config: Config = Config(),
+      config: Config = Config()
   ): HttpClient =
     new HttpClient {
       override def send[T, R >: ZioSttpCapabilities & Effect[Task]](request: Request[T, R]): Task[Response[T]] = {
         def createSpannedResponse(span: ZSpan, request: Request[T, R]): Task[Response[T]] = {
-          val headers             = config.toHeaders.fromContext(span.context)
+          val headers = config.toHeaders.fromContext(span.context)
           val reqWithTraceHeaders = request.headers(SttpHeaders.converter.to(headers).headers*)
           for {
             _ <- span
@@ -43,7 +43,7 @@ object TracedBackend {
         tracer.span(
           config.spanNamer(request),
           SpanKind.Client,
-          createErrorHandler,
+          createErrorHandler
         )(createSpannedResponse(_, request))
       }
 
@@ -58,6 +58,6 @@ object TracedBackend {
         delegate <- ZIO.service[HttpClient]
         tracer   <- ZIO.service[ZTracer]
         config   <- ZIO.service[Config]
-      } yield TracedBackend(delegate, tracer, config),
+      } yield TracedBackend(delegate, tracer, config)
     )
 }

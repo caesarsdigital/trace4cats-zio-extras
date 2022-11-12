@@ -1,20 +1,13 @@
 package com.caesars.tracing
 
-import cats.effect.Ref as CERef
+import cats.effect.{Ref as CERef}
 import com.caesars.tracing.sttp.{HttpClient, TracedBackend}
 import com.caesars.tracing.testing.SpanRecorder
 import io.janstenpickle.trace4cats.`export`.RefSpanCompleter
 import io.janstenpickle.trace4cats.kernel.{SpanCompleter, SpanSampler}
 import io.janstenpickle.trace4cats.model.{CompletedSpan, SpanKind, TraceHeaders, TraceProcess}
 import scala.collection.immutable.Queue
-import _root_.sttp.client3.{
-  Identity,
-  Request as SttpRequest,
-  RequestT,
-  Response as SttpResponse,
-  UriContext,
-  basicRequest,
-}
+import _root_.sttp.client3.{Identity, RequestT, UriContext, basicRequest, Request as SttpRequest, Response as SttpResponse}
 import _root_.sttp.client3.impl.zio.RIOMonadAsyncError
 import _root_.sttp.client3.testing.SttpBackendStub
 import _root_.sttp.model.RequestMetadata
@@ -33,24 +26,24 @@ object TracingTestUtils {
 
   val spanRecorderLayer: ULayer[SpanRecorder] =
     ZLayer.fromZIO(
-      CERef.of[Task, Queue[CompletedSpan]](Queue.empty).orDie,
+      CERef.of[Task, Queue[CompletedSpan]](Queue.empty).orDie
     )
 
   val completer: URLayer[SpanRecorder, SpanCompleter[Task]] =
     ZLayer.fromZIO(
       ZIO.serviceWith {
         new RefSpanCompleter[Task](TraceProcess("ZTracerImplementationSpec"), _)
-      },
+      }
     )
 }
 
 object ZTracerSpecUtils {
   def spanSpec(
       name: String = "root",
-      kind: SpanKind = SpanKind.Internal,
+      kind: SpanKind = SpanKind.Internal
   )(
       f: ZSpan => UIO[Unit],
-      s: RefSpanCompleter[Task] => Task[CompletedSpan],
+      s: RefSpanCompleter[Task] => Task[CompletedSpan]
   ): RIO[ZTracer & RefSpanCompleter[Task], CompletedSpan] =
     for {
       tracer <- ZIO.service[ZTracer]
@@ -60,7 +53,7 @@ object ZTracerSpecUtils {
     } yield span
 
   def spanFromHeadersSpec(
-      s: RefSpanCompleter[Task] => Task[CompletedSpan],
+      s: RefSpanCompleter[Task] => Task[CompletedSpan]
   ): ZIO[ZTracer & RefSpanCompleter[Task], Throwable, CompletedSpan] =
     for {
       tracer <- ZIO.service[ZTracer]
@@ -81,15 +74,15 @@ object ZTracerImplementationSpecUtils {
 
   def implementationSpec(be: HttpClient): RIO[
     ZTracer & SpanRecorder,
-    (Queue[CompletedSpan], CompletedSpan, SttpResponse[Either[String, String]]),
+    (Queue[CompletedSpan], CompletedSpan, SttpResponse[Either[String, String]])
   ] = implementationSpec(be, identity)
 
   def implementationSpec(
       be: HttpClient,
-      requestMap: RequestT[Identity, Either[String, String], Any] => RequestT[Identity, Either[String, String], Any],
+      requestMap: RequestT[Identity, Either[String, String], Any] => RequestT[Identity, Either[String, String], Any]
   ): RIO[
     ZTracer & SpanRecorder,
-    (Queue[CompletedSpan], CompletedSpan, SttpResponse[Either[String, String]]),
+    (Queue[CompletedSpan], CompletedSpan, SttpResponse[Either[String, String]])
   ] = {
     val req: SttpRequest[Either[String, String], Any] = basicRequest.get(uri"http://www.google.com/")
 
@@ -111,10 +104,9 @@ object ZTracerImplementationSpecUtils {
 
     for {
       tracedApp1 <- TracedHttp.layer()(app)
-      _ <- tracedApp1(Request(method = Method.GET, url = URL(path = Path(Vector("foo"), trailingSlash = false))))
-        .orDieWith(_.get)
-      ref   <- ZIO.service[cats.effect.Ref[Task, Queue[CompletedSpan]]]
-      spans <- ref.get
+      _          <- tracedApp1(Request(method = Method.GET, url = URL(path = Path(Vector("foo"), trailingSlash = false)))).orDieWith(_.get)
+      ref        <- ZIO.service[cats.effect.Ref[Task, Queue[CompletedSpan]]]
+      spans      <- ref.get
       span = spans.head
     } yield (spans, span)
   }
@@ -130,9 +122,9 @@ object ZTracerImplementationSpecUtils {
 
     for {
       tracedApp <- TracedHttp.layer()(app.catchAll(recover))
-      _ <- tracedApp(Request(method = Method.GET, url = URL(path = Path(Vector("foo"), trailingSlash = false)))).either
-      ref   <- ZIO.service[cats.effect.Ref[Task, Queue[CompletedSpan]]]
-      spans <- ref.get
+      _         <- tracedApp(Request(method = Method.GET, url = URL(path = Path(Vector("foo"), trailingSlash = false)))).either
+      ref       <- ZIO.service[cats.effect.Ref[Task, Queue[CompletedSpan]]]
+      spans     <- ref.get
       span = spans.head
     } yield span
   }
@@ -145,9 +137,9 @@ object ZTracerImplementationSpecUtils {
 
     for {
       tracedApp <- TracedHttp.layer()(app ++ Http.notFound)
-      _ <- tracedApp(Request(method = Method.GET, url = URL(path = Path(Vector("foo"), trailingSlash = false)))).either
-      ref   <- ZIO.service[cats.effect.Ref[Task, Queue[CompletedSpan]]]
-      spans <- ref.get
+      _         <- tracedApp(Request(method = Method.GET, url = URL(path = Path(Vector("foo"), trailingSlash = false)))).either
+      ref       <- ZIO.service[cats.effect.Ref[Task, Queue[CompletedSpan]]]
+      spans     <- ref.get
       span = spans.head
     } yield span
   }
@@ -167,9 +159,9 @@ object ZTracerImplementationSpecUtils {
 
     for {
       tracedApp <- TracedHttp.layer()(tapirApp)
-      _ <- tracedApp(Request(method = Method.GET, url = URL(path = Path(Vector("foo"), trailingSlash = false)))).either
-      ref   <- ZIO.service[SpanRecorder]
-      spans <- ref.get
+      _         <- tracedApp(Request(method = Method.GET, url = URL(path = Path(Vector("foo"), trailingSlash = false)))).either
+      ref       <- ZIO.service[SpanRecorder]
+      spans     <- ref.get
       span = spans.head
     } yield span
   }
@@ -177,7 +169,7 @@ object ZTracerImplementationSpecUtils {
   import zhttp.service.{EventLoopGroup, ServerChannelFactory}
   val multiAppImplementationSpec: RIO[
     ServerChannelFactory & Scope & HttpClient & ZTracer & EventLoopGroup & SpanRecorder,
-    (Queue[CompletedSpan], CompletedSpan),
+    (Queue[CompletedSpan], CompletedSpan)
   ] = {
     val app1 =
       Http.collectZIO[Request] { case Method.GET -> !! / "foo" =>

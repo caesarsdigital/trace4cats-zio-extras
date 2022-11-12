@@ -7,5 +7,5 @@ import zio.*
 
 package object sttp {
   type ZioSttpCapabilities = ZioStreams & WebSockets
-  type HttpClient          = SttpBackend[Task, ZioSttpCapabilities]
+  type HttpClient = SttpBackend[Task, ZioSttpCapabilities]
 }

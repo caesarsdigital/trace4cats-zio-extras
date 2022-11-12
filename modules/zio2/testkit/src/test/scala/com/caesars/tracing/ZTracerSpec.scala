@@ -18,20 +18,18 @@ object ZTracerSpec extends ZIOSpecDefault {
         ZIO.service[ZTracer].flatMap(_.context).map(context => assertTrue(context == SpanContext.invalid))
       },
       test("can create a span and add attributes to it") {
-        spanSpec()(
-          span => span.putAll(("fieldName", StringValue("fieldValue"))),
-          completer => completer.get.map(_.head),
-        ).map { cs =>
-          assertTrue(
-            cs.attributes.contains("fieldName", "fieldValue"),
-            cs.name == "root",
-          )
+        spanSpec()(span => span.putAll(("fieldName", StringValue("fieldValue"))), completer => completer.get.map(_.head)).map {
+          cs =>
+            assertTrue(
+              cs.attributes.contains("fieldName", "fieldValue"),
+              cs.name == "root"
+            )
         }
       },
       test("can create a span and set its status") {
         spanSpec()(_.setStatus(SpanStatus.Aborted), completer => completer.get.map(_.head)).map { cs =>
           assertTrue(
-            cs.status == SpanStatus.Aborted,
+            cs.status == SpanStatus.Aborted
           )
         }
       },
@@ -39,7 +37,7 @@ object ZTracerSpec extends ZIOSpecDefault {
         spanFromHeadersSpec(_.get.map(_.head)).map { cs =>
           assertTrue(
             cs.isRoot,
-            cs.name == "mySpan",
+            cs.name == "mySpan"
           )
         }
       },
@@ -59,7 +57,7 @@ object ZTracerSpec extends ZIOSpecDefault {
           result.length == 20,
           result.forall(span => span.isRoot),
           result.flatMap(span => evalAttributes(span.attributes).get("a")).toSet ==
-            appNames.asInstanceOf[Set[Any]],
+            appNames.asInstanceOf[Set[Any]]
         )
       },
       test("can create nested spans") {
@@ -71,17 +69,17 @@ object ZTracerSpec extends ZIOSpecDefault {
           completer <- ZIO.service[RefSpanCompleter[Task]]
           result    <- completer.get
           parent = result.find(s => s.name == "parent").getOrElse(throw new Exception("boom"))
-          child  = result.find(s => s.name == "child").getOrElse(throw new Exception("boom"))
+          child = result.find(s => s.name == "child").getOrElse(throw new Exception("boom"))
         } yield assertTrue(
           result.length == 2,
           result.map(s => s.name).toSet == Set("parent", "child"),
-          child.context.parent.map(_.spanId).contains(parent.context.spanId),
+          child.context.parent.map(_.spanId).contains(parent.context.spanId)
         )
-      },
+      }
     )
       .provideLayer(
         ZLayer.fromZIO(RefSpanCompleter[Task]("my-service").orDie) >+>
           entryPointRef >+>
-          ZTracer.layer,
+          ZTracer.layer
       )
 }

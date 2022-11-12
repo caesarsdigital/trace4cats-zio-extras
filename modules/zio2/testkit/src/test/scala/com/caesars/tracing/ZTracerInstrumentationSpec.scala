@@ -4,7 +4,7 @@ import com.caesars.tracing.sttp.{HttpClient, TracedBackend}
 import com.caesars.tracing.testing.*
 import io.janstenpickle.trace4cats.ToHeaders
 import io.janstenpickle.trace4cats.model.{SpanKind, SpanStatus}
-import io.netty.channel.EventLoopGroup as NEventLoopGroup
+import io.netty.channel.{EventLoopGroup as NEventLoopGroup}
 import org.typelevel.ci.CIString
 import _root_.sttp.client3.asynchttpclient.zio.AsyncHttpClientZioBackend
 import zhttp.service.server.ServerChannelFactory
@@ -34,7 +34,7 @@ object SttpClientInstrumentationSpec extends ZIOSpecDefault {
             spans.length == 1,
             span.context.parent.isEmpty,
             span.name == "GET ",
-            span.attributes.get("remote.service.hostname").map(_.value.value).contains("www.google.com"),
+            span.attributes.get("remote.service.hostname").map(_.value.value).contains("www.google.com")
           )
         }
       },
@@ -43,15 +43,15 @@ object SttpClientInstrumentationSpec extends ZIOSpecDefault {
           val traceHeaders = ToHeaders.standard.fromContext(spans.last.context).values
           assertTrue(
             traceHeaders.toSet.subsetOf(
-              res.request.headers.map(h => CIString(h.name) -> h.value).toSet,
-            ),
+              res.request.headers.map(h => CIString(h.name) -> h.value).toSet
+            )
           )
         }
       },
       test("preserves original headers") {
         implementationSpec(successBackend, _.header("foo", "bar")).map { case (_, _, res) =>
           assertTrue(
-            res.request.headers("foo").contains("bar"),
+            res.request.headers("foo").contains("bar")
           )
         }
       },
@@ -62,10 +62,10 @@ object SttpClientInstrumentationSpec extends ZIOSpecDefault {
             spans.length == 1,
             span.context.parent.isEmpty,
             span.name == "GET ",
-            span.attributes.get("remote.service.hostname").map(_.value.value).contains("www.google.com"),
+            span.attributes.get("remote.service.hostname").map(_.value.value).contains("www.google.com")
           )
         }
-      },
+      }
     ).provideSomeLayer(testLayer)
 }
 
@@ -88,7 +88,7 @@ object ZioHttpInstrumentationSpec extends ZIOSpecDefault {
           spans.length == 1,
           span.kind == SpanKind.Server,
           span.context.parent.isEmpty,
-          span.name == "GET /foo",
+          span.name == "GET /foo"
         )
       }
     },
@@ -96,7 +96,7 @@ object ZioHttpInstrumentationSpec extends ZIOSpecDefault {
       failingSingleAppImplementationSpec.map { span =>
         assertTrue(
           span.status == SpanStatus.Internal("Internal Server Error"),
-          span.attributes.contains("status.code", 500),
+          span.attributes.contains("status.code", 500)
         )
       }
     },
@@ -104,7 +104,7 @@ object ZioHttpInstrumentationSpec extends ZIOSpecDefault {
       notFoundSingleAppImplementationSpec.map { span =>
         assertTrue(
           span.status == SpanStatus.NotFound,
-          span.attributes.contains("status.code", 404),
+          span.attributes.contains("status.code", 404)
         )
       }
     },
@@ -112,7 +112,7 @@ object ZioHttpInstrumentationSpec extends ZIOSpecDefault {
       singleTapirAppSpec.map { span =>
         assertTrue(
           span.status == SpanStatus.Internal("Bad Request"),
-          span.attributes.contains("status.code", 400),
+          span.attributes.contains("status.code", 400)
         )
       }
     },
@@ -128,7 +128,7 @@ object ZTracerInstrumentationSpec extends ZIOSpecDefault {
 
   val testLayer =
     ZLayer.make[
-      ServerChannelFactoryService & HttpClient & ZTracer & NEventLoopGroup & SpanRecorder,
+      ServerChannelFactoryService & HttpClient & ZTracer & NEventLoopGroup & SpanRecorder
     ](
       ZLayer.succeed(TracingTestUtils.sampler),
       TracingTestUtils.spanRecorderLayer,
@@ -137,7 +137,7 @@ object ZTracerInstrumentationSpec extends ZIOSpecDefault {
       ZTracer.layer,
       tracedBackend,
       EventLoopGroup.auto(),
-      ServerChannelFactory.auto,
+      ServerChannelFactory.auto
     )
 
   override val spec = suite("Ztracer Instrumentation for zio-http and Sttp Client")(
@@ -149,16 +149,16 @@ object ZTracerInstrumentationSpec extends ZIOSpecDefault {
           result.map(span => (span.name, span.kind)).toList ==
             List(
               "GET /bar" -> SpanKind.Server,
-              "GET bar"  -> SpanKind.Client,
+              "GET bar" -> SpanKind.Client,
               "GET /foo" -> SpanKind.Server,
-              "GET foo"  -> SpanKind.Client,
+              "GET foo" -> SpanKind.Client
             ),
           root.name == "GET foo",
           root.context.parent.isEmpty,
-          result.forall(_.status.isOk),
+          result.forall(_.status.isOk)
         )
       }
-    },
+    }
   )
     .provideSomeLayer[TestEnvironment & Scope](testLayer)
 }

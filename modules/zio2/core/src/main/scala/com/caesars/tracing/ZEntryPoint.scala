@@ -46,7 +46,7 @@ class ZEntryPoint(private val underlying: EntryPoint[Task]) extends AnyVal {
       name: SpanName,
       kind: SpanKind,
       headers: TraceHeaders,
-      errorHandler: ErrorHandler,
+      errorHandler: ErrorHandler
   ): URIO[Scope, ZSpan] =
     underlying
       .continueOrElseRoot(name, kind, headers, errorHandler)
@@ -94,7 +94,7 @@ object ZEntryPoint {
       name: SpanName,
       kind: SpanKind,
       headers: TraceHeaders,
-      errorHandler: ErrorHandler,
+      errorHandler: ErrorHandler
   ): URIO[Scope & ZEntryPoint, ZSpan] =
     ZIO.serviceWithZIO[ZEntryPoint] {
       _.continueOrElseRootSpan(name, kind, headers, errorHandler)
