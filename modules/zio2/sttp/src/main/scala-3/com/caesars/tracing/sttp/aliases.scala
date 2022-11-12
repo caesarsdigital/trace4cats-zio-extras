@@ -6,4 +6,4 @@ import sttp.client3.SttpBackend
 import zio.*
 
 type ZioSttpCapabilities = ZioStreams & WebSockets
-type HttpClient = SttpBackend[Task, ZioSttpCapabilities]
+type HttpClient          = SttpBackend[Task, ZioSttpCapabilities]

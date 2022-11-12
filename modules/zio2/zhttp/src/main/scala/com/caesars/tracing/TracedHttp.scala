@@ -10,27 +10,32 @@ object TracedHttp {
   def apply[R](
       ztracer: ZTracer,
       dropRequestWhen: Request => Boolean = _ => false,
-      dropHeadersWhen: String => Boolean = HeaderNames.isSensitive
+      dropHeadersWhen: String => Boolean = HeaderNames.isSensitive,
   )(app: HttpApp[R, Throwable]): HttpApp[R, Throwable] = {
     import TracedHttpUtils.*
 
     Http.fromOptionFunction {
-      case request if !dropRequestWhen(request) => createUndroppedSpannedResponse(request, ztracer, app, dropHeadersWhen)
-      case request                              => app(request)
+      case request if !dropRequestWhen(request) =>
+        createUndroppedSpannedResponse(request, ztracer, app, dropHeadersWhen)
+      case request => app(request)
     }
   }
 
   def layer[R](
       dropRequestWhen: Request => Boolean = _ => false,
-      dropHeadersWhen: String => Boolean = HeaderNames.isSensitive
+      dropHeadersWhen: String => Boolean = HeaderNames.isSensitive,
   )(app: HttpApp[R, Throwable]): URIO[ZTracer, HttpApp[R, Throwable]] =
     ZIO.service[ZTracer].map(apply[R](_, dropRequestWhen, dropHeadersWhen)(app))
 }
 
 object TracedHttpUtils {
-  def putHeadersInSpan(res: Response, span: ZSpan, dropHeadersWhen: String => Boolean = HeaderNames.isSensitive): UIO[Unit] = {
+  def putHeadersInSpan(
+      res: Response,
+      span: ZSpan,
+      dropHeadersWhen: String => Boolean = HeaderNames.isSensitive,
+  ): UIO[Unit] = {
     val headers: List[(String, AttributeValue)] =
-      "status.code" -> LongValue(res.status.asJava.code().toLong) ::
+      "status.code"      -> LongValue(res.status.asJava.code().toLong) ::
         "status.message" -> StringValue(res.status.asJava.reasonPhrase()) ::
         res.headers.toList
           .filterNot { case (k, _) => dropHeadersWhen(k) }
@@ -43,7 +48,7 @@ object TracedHttpUtils {
       request: Request,
       span: ZSpan,
       app: HttpApp[R, Throwable],
-      dropHeadersWhen: String => Boolean = HeaderNames.isSensitive
+      dropHeadersWhen: String => Boolean = HeaderNames.isSensitive,
   ): ZIO[R, Option[Throwable], Response] = {
     app(request).tapBoth(
       {
@@ -52,7 +57,7 @@ object TracedHttpUtils {
       },
       { res =>
         span.setStatus(toSpanStatus(res.status)) *> putHeadersInSpan(res, span, dropHeadersWhen)
-      }
+      },
     )
   }
 
@@ -60,15 +65,15 @@ object TracedHttpUtils {
       request: Request,
       ztracer: ZTracer,
       app: HttpApp[R, Throwable],
-      dropHeadersWhen: String => Boolean = HeaderNames.isSensitive
+      dropHeadersWhen: String => Boolean = HeaderNames.isSensitive,
   ): ZIO[R, Option[Throwable], Response] = {
-    val method = request.method
-    val url = request.url
+    val method  = request.method
+    val url     = request.url
     val headers = request.headers
-    val name = s"$method ${url.path}"
+    val name    = s"$method ${url.path}"
     val traceHeaders =
       TraceHeaders.of(
-        headers.toList.filterNot { case (k, _) => dropHeadersWhen(k) }*
+        headers.toList.filterNot { case (k, _) => dropHeadersWhen(k) }*,
       )
 
     ztracer.fromHeaders(traceHeaders, SpanKind.Server, name)(createSpannedResponse(request, _, app, dropHeadersWhen))

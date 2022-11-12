@@ -16,19 +16,24 @@ object NewRelic {
   case class LoggingConfig(level: LogLevel, targets: List[LogTarget]) {
     def hasTarget(target: LogTarget) = targets.exists(_ == target)
   }
-  case class CompleterConfig(traceProcess: TraceProcess, apiKey: String, endpoint: Endpoint, logSettings: Option[LoggingConfig])
+  case class CompleterConfig(
+      traceProcess: TraceProcess,
+      apiKey: String,
+      endpoint: Endpoint,
+      logSettings: Option[LoggingConfig],
+  )
 
   val SpanCompleterLayer: URLayer[CompleterConfig, SpanCompleter[Task]] = {
     def log(level: LogLevel)(msg: String): UIO[Unit] =
       level match {
-        case LogLevel.Fatal => ZIO.logFatal(msg)
-        case LogLevel.Error => ZIO.logError(msg)
+        case LogLevel.Fatal   => ZIO.logFatal(msg)
+        case LogLevel.Error   => ZIO.logError(msg)
         case LogLevel.Warning => ZIO.logWarning(msg)
-        case LogLevel.Info => ZIO.logInfo(msg)
-        case LogLevel.All => ZIO.log(msg)
-        case LogLevel.Debug => ZIO.logDebug(msg)
-        case LogLevel.Trace => ZIO.logTrace(msg)
-        case _ => ZIO.unit
+        case LogLevel.Info    => ZIO.logInfo(msg)
+        case LogLevel.All     => ZIO.log(msg)
+        case LogLevel.Debug   => ZIO.logDebug(msg)
+        case LogLevel.Trace   => ZIO.logTrace(msg)
+        case _                => ZIO.unit
       }
 
     def client(cfg: CompleterConfig): URIO[Scope, Client[Task]] =
@@ -45,8 +50,8 @@ object NewRelic {
             logHeaders = cfg.logSettings.exists(_.hasTarget(LogTarget.Headers)),
             logBody = cfg.logSettings.exists(_.hasTarget(LogTarget.Body)),
             redactHeadersWhen = _.compareTo(CIString("Api-Key")) == 0,
-            logAction = cfg.logSettings.map(x => log(x.level))
-          )
+            logAction = cfg.logSettings.map(x => log(x.level)),
+          ),
         )
         .toScopedZIO
         .orDie
@@ -59,7 +64,7 @@ object NewRelic {
           client = client,
           process = config.traceProcess,
           apiKey = config.apiKey,
-          endpoint = config.endpoint
+          endpoint = config.endpoint,
         ).toScopedZIO
       } yield result
     }.orDie
