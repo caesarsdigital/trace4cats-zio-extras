@@ -1,9 +1,9 @@
 package com.caesars.tracing
 
 import com.caesars.tracing.TracedBackend.TracedBackendConfig
-import io.janstenpickle.trace4cats.`export`.RefSpanCompleter
-import io.janstenpickle.trace4cats.kernel.{SpanCompleter, SpanSampler}
-import io.janstenpickle.trace4cats.model.{CompletedSpan, TraceProcess}
+import trace4cats.RefSpanCompleter
+import trace4cats.kerneltrace4cats.kernel.{SpanCompleter, SpanSampler}
+import trace4cats.modeltrace4cats.model.{CompletedSpan, TraceProcess}
 import sttp.client3.asynchttpclient.zio.AsyncHttpClientZioBackend
 import sttp.client3.asynchttpclient.zio.SttpClient.Service as ZIOSttpClient
 import zhttp.http.*

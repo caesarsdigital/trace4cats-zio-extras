@@ -1,9 +1,9 @@
 package com.caesars.tracing
 
 import cats.syntax.option.*
-import io.janstenpickle.trace4cats.{ErrorHandler, ToHeaders}
-import io.janstenpickle.trace4cats.inject.SpanParams
-import io.janstenpickle.trace4cats.model.*
+import trace4catstrace4cats.{ErrorHandler, ToHeaders}
+import trace4cats.SpanParams
+import trace4cats.model.*
 import zio.*
 
 //TODO: find a way to remove the option

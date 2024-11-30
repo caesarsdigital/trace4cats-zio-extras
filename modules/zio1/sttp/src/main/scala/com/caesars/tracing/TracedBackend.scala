@@ -1,9 +1,9 @@
 package com.caesars.tracing
 
-import io.janstenpickle.trace4cats.model.{SampleDecision, SpanKind}
-import io.janstenpickle.trace4cats.sttp.client3.{SttpRequest, SttpSpanNamer}
+import trace4cats.modeltrace4cats.model.{SampleDecision, SpanKind}
+import trace4cats.sttp.client3trace4cats.sttp.client3.{SttpRequest, SttpSpanNamer}
 import io.janstenpickle.trace4cats.sttp.common.{SttpHeaders, SttpStatusMapping}
-import io.janstenpickle.trace4cats.{ErrorHandler, ToHeaders}
+import trace4catstrace4cats.{ErrorHandler, ToHeaders}
 import sttp.capabilities.zio.ZioStreams
 import sttp.capabilities.{Effect, WebSockets}
 import sttp.client3.*

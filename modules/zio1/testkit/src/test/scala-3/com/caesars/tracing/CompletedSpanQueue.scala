@@ -3,7 +3,7 @@ package com.caesars.tracing
 import scala.collection.immutable.{Queue => StdQueue}
 
 import cats.effect.Ref as CERef
-import io.janstenpickle.trace4cats.model.CompletedSpan
+import trace4cats.model.CompletedSpan
 import zio.Task
 import zio.interop.catz.asyncRuntimeInstance
 import zio.interop.catz.implicits.rts

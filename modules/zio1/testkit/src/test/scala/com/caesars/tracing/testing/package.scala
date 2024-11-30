@@ -1,6 +1,6 @@
 package com.caesars.tracing
 
-import io.janstenpickle.trace4cats.model.{AttributeValue, CompletedSpan}
+import trace4cats.modeltrace4cats.model.{AttributeValue, CompletedSpan}
 
 package object testing {
   def evalAttributes(xs: Map[String, AttributeValue]): Map[String, Any] =

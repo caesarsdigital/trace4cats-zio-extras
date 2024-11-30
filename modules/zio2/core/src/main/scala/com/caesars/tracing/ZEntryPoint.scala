@@ -1,9 +1,9 @@
 package com.caesars.tracing
 
-import io.janstenpickle.trace4cats.ErrorHandler
-import io.janstenpickle.trace4cats.inject.{EntryPoint, SpanName}
-import io.janstenpickle.trace4cats.kernel.{SpanCompleter, SpanSampler}
-import io.janstenpickle.trace4cats.model.*
+import trace4cats.ErrorHandler
+import trace4catstrace4cats.{EntryPoint, SpanName}
+import trace4cats.kerneltrace4cats.kernel.{SpanCompleter, SpanSampler}
+import trace4cats.model.*
 
 import zio.*
 import zio.interop.catz.*

@@ -1,6 +1,6 @@
 package com.caesars.tracing
 
-import io.janstenpickle.trace4cats.model.{CompletedSpan, SpanKind, SpanStatus}
+import trace4cats.modeltrace4cats.modeltrace4cats.model.{CompletedSpan, SpanKind, SpanStatus}
 import sttp.client3.Response
 import zio.test.Assertion.*
 import zio.test.AssertionM.Render.*
